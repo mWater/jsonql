@@ -6,9 +6,10 @@
     ],
     "launchers": {
         "all": {
-          "command": "mocha -R tap test/*Tests.coffee",
+          "command": "mocha -R tap --compilers coffee:coffee-script/register test/*Tests.coffee",
           "protocol": "tap"
         }
     },
-    "launch_in_dev": [ ]
+   "launch_in_dev": [ "all" ],
+   "launch_in_ci": [ "all" ]
 }

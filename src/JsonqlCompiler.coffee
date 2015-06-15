@@ -194,11 +194,18 @@ module.exports = class JsonqlCompiler
 
     switch expr.op
       when ">", "<", ">=", "<=", "=", "<>", "+", "-", "*", "/", "~", "~*", "like"
-        return new SqlFragment("(")
+        frag = new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(new SqlFragment(" " + expr.op + " "))
-          .append(@compileExpr(expr.exprs[1], aliases))
-          .append(")")
+
+        if expr.modifier in ['any', 'all']
+          frag.append(expr.modifier).append("(")
+            .append(@compileExpr(expr.exprs[1], aliases))
+            .append("))")
+        else
+          frag.append(@compileExpr(expr.exprs[1], aliases))
+            .append(")")
+        return frag
       when "and", "or"
         if expr.exprs.length == 0
           return new SqlFragment()

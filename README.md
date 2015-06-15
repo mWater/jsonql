@@ -23,7 +23,9 @@ Top level. Has
 ### op
 
 Expression. Has op: >, <, <>, =, >=, <=, +, -, *, /, ~, ~*, like, and, or, not, is null, is not null
-Has exprs: [expression]
+Has 
+ exprs: [expression]
+ modifier: "any", "all" (optional)
 
 ### select
 

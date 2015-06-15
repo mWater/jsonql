@@ -272,6 +272,9 @@ describe "JsonqlCompiler", ->
       it '::text', ->
         @testExpr({ type: "op", op: "::text", exprs: [@a] }, "(?::text)", [1])   
 
+      it '= any', ->
+        @testExpr({ type: "op", op: "=", modifier: "any", exprs: [@a, @b] }, "(? = any(?))", [1, 2])
+
       it 'aggregate expressions', ->
         @testExpr({ type: "op", op: "avg", exprs: [@a] }, "avg(?)", [1])
         @testExpr({ type: "op", op: "min", exprs: [@a] }, "min(?)", [1])
