@@ -1,0 +1,29 @@
+{
+  "name": "jsonql",
+  "version": "0.1.0",
+  "description": "JSON representation of SQL",
+  "main": "lib/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": "git@github.com:mWater/jsonql.git",
+  "scripts": {
+    "test": "testem ci",
+    "prepublish": "gulp"
+  },
+  "style": "./src/index.css",
+  "author": "Clayton Grassick",
+  "license": "GPLv3",
+  "dependencies": {
+    "lodash": "^3.9.3",
+    "pg-escape": "^0.1.0"
+  },
+  "devDependencies": {
+    "chai": "^2.0.0",
+    "glob": "^4.3.5",
+    "gulp": "git://github.com/gulpjs/gulp.git#4.0",
+    "gulp-coffee": "^2.3.1",
+    "gulp-util": "^3.0.3",
+    "vinyl-source-stream": "^1.0.0"
+  }
+}

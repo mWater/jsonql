@@ -1,0 +1,14 @@
+{
+    "framework": "mocha",
+    "src_files": [
+        "src/*.coffee",
+        "test/*Tests.coffee"
+    ],
+    "launchers": {
+        "all": {
+          "command": "mocha -R tap test/*Tests.coffee",
+          "protocol": "tap"
+        }
+    },
+    "launch_in_dev": [ ]
+}
