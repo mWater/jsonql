@@ -37,10 +37,10 @@ module.exports = class JsonqlCompiler
     frag.append('select ')
 
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    from = @compileFrom(query.from)
+    from = @compileFrom(query.from, aliases)
 
     # Compile selects
-    selects = _.map(query.selects, (s) => @compileSelect(s, from.aliases))
+    selects = _.map(query.selects, (s) => @compileSelect(s, aliases))
     frag.append(SqlFragment.join(selects, ", "))
 
     # Add from
@@ -49,7 +49,7 @@ module.exports = class JsonqlCompiler
 
     # Add where
     if query.where
-      where = @compileExpr(query.where, from.aliases)
+      where = @compileExpr(query.where, aliases)
       if not where.isEmpty()
         frag.append(" where ")
         frag.append(where)
@@ -65,7 +65,7 @@ module.exports = class JsonqlCompiler
 
     # Add order by
     if query.orderBy
-      frag.append(@compileOrderBy(query.orderBy, from.aliases))
+      frag.append(@compileOrderBy(query.orderBy, aliases))
 
     # Add limit
     if query.limit?
@@ -96,26 +96,35 @@ module.exports = class JsonqlCompiler
 
     return frag
 
-  # Compiles table or join, returning { sql, aliases }
-  compileFrom: (from) ->
-    aliases = {}
-
+  # Compiles table or join returning sql and modifying aliases
+  compileFrom: (from, aliases) ->
     switch from.type 
       when "table"
         # Validate alias
         @validateAlias(from.alias)
 
+        # If alias already in use, refuse
+        if aliases[from.alias]?
+          throw new Error("Alias #{from.alias} in use")
+
+        # If from.table is an existing alias, use it directly
+        if aliases[from.table]?
+          # Save alias
+          aliases[from.alias] = "" # Save as known non-table
+
+          return new SqlFragment(@schemaMap.mapTableAlias(from.table))
+            .append(' as "')
+            .append(@schemaMap.mapTableAlias(from.alias))
+            .append('"')
+
         # Save alias
         aliases[from.alias] = from.table
+        return @schemaMap.mapTable(from.table).append(new SqlFragment(' as "' + @schemaMap.mapTableAlias(from.alias) + '"'))
 
-        return { 
-          sql: @schemaMap.mapTable(from.table).append(new SqlFragment(' as "' + @schemaMap.mapTableAlias(from.alias) + '"'))
-          aliases: aliases
-        }
       when "join"
         # Compile left and right
-        left = @compileFrom(from.left)
-        right = @compileFrom(from.right)
+        left = @compileFrom(from.left, aliases)
+        right = @compileFrom(from.right, aliases)
 
         # Make sure aliases don't overlap
         if _.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0
@@ -131,16 +140,13 @@ module.exports = class JsonqlCompiler
           throw new Error("Unsupported join kind #{from.kind}")
 
         # Combine
-        return {
-          sql: new SqlFragment("(")
+        return new SqlFragment("(")
             .append(left.sql)
             .append(" " + from.kind + " join ")
             .append(right.sql)
             .append(" on ")
             .append(onSql)
             .append(")")
-          aliases: aliases
-        }
       else
         throw new Error("Unsupported type #{from.type}")
 
@@ -265,8 +271,11 @@ module.exports = class JsonqlCompiler
   compileScalar: (query, aliases) ->
     frag = new SqlFragment('(select ')
 
+    # Make a copy for use internally
+    aliases = _.clone(aliases)
+
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    from = @compileFrom(query.from)
+    from = @compileFrom(query.from, aliases)
 
     # Check that no overlap with existing aliases
     if _.intersection(_.keys(from.aliases), _.keys(aliases)).length > 0

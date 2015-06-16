@@ -29,7 +29,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ? as "x" from ABC as "ABC1"'
+    assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1"'
     assert.deepEqual compiled.params, [4]
 
   it 'compiles query with field', ->
@@ -42,7 +42,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ABC1.P as "x" from ABC as "ABC1"'
+    assert.equal compiled.sql, 'select a_abc1.P as "x" from ABC as "a_abc1"'
     assert.deepEqual compiled.params, []
 
   it 'compiles query with where', ->
@@ -59,7 +59,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ABC1.P as "x" from ABC as "ABC1" where (ABC1.Q > ?)'
+    assert.equal compiled.sql, 'select a_abc1.P as "x" from ABC as "a_abc1" where (a_abc1.Q > ?)'
     assert.deepEqual compiled.params, [5]
 
   it 'compiles query with groupBy', ->
@@ -74,7 +74,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ABC1.P as "x", ABC1.Q as "y" from ABC as "ABC1" group by ?, ?'
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" group by ?, ?'
     assert.deepEqual compiled.params, [1, 2]
 
   it 'compiles query with orderBy ordinal', ->
@@ -92,7 +92,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ABC1.P as "x", ABC1.Q as "y" from ABC as "ABC1" order by ? desc, ?'
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by ? desc, ?'
     assert.deepEqual compiled.params, [1, 2]
 
   it 'compiles query with orderBy expr', ->
@@ -109,7 +109,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ABC1.P as "x", ABC1.Q as "y" from ABC as "ABC1" order by ABC1.Q'
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by a_abc1.Q'
     assert.deepEqual compiled.params, []
 
   it 'compiles query with limit', ->
@@ -123,7 +123,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ? as "x" from ABC as "ABC1" limit ?'
+    assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1" limit ?'
     assert.deepEqual compiled.params, [4, 10]
 
   it 'compiles query with offset', ->
@@ -137,7 +137,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select ? as "x" from ABC as "ABC1" offset ?'
+    assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1" offset ?'
     assert.deepEqual compiled.params, [4, 10]
 
   it 'compiles query with withs', ->
@@ -161,7 +161,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'with "WQ" as (select ? as "q" from XYZ as "XYZ1") select ? as "x" from WQ as "ABC1"'
+    assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select ? as "x" from a_wq as "a_abc1"'
     assert.deepEqual compiled.params, [5, 4]
 
   it 'validates select aliases', ->
@@ -177,14 +177,16 @@ describe "JsonqlCompiler", ->
 
   describe "compiles froms", ->
     it 'compiles table', ->
-      result = @compiler.compileFrom({ type: "table", table: "abc", alias: "abc1" })
-      assert.equal result.sql.sql, 'ABC as "ABC1"'
-      assert.deepEqual result.sql.params, []
+      aliases = {}
+      result = @compiler.compileFrom({ type: "table", table: "abc", alias: "abc1" }, aliases)
+      assert.equal result.sql, 'ABC as "a_abc1"'
+      assert.deepEqual result.params, []
 
       # Maps alias to table
-      assert.deepEqual result.aliases, { "abc1": "abc" }
+      assert.deepEqual aliases, { "abc1": "abc" }
 
     it 'compiles join', ->
+      aliases = {}
       result = @compiler.compileFrom({
         type: "join"
         left: { type: "table", table: "abc", alias: "abc1" }
@@ -194,12 +196,12 @@ describe "JsonqlCompiler", ->
           { type: "field", tableAlias: "abc1", column: "p" }
           { type: "field", tableAlias: "def1", column: "q" }
         ]}
-      })
-      assert.equal result.sql.sql, '(ABC as "ABC1" inner join DEF as "DEF1" on (ABC1.P = DEF1.Q))'
-      assert.deepEqual result.sql.params, []
+      }, aliases)
+      assert.equal result.sql, '(ABC as "a_abc1" inner join DEF as "a_def1" on (a_abc1.P = a_def1.Q))'
+      assert.deepEqual result.params, []
       
       # Maps alias to table
-      assert.deepEqual result.aliases, { "abc1": "abc", "def1": "def" }
+      assert.deepEqual aliases, { "abc1": "abc", "def1": "def" }
 
     it 'prevents duplicate aliases', ->
       assert.throws () =>
@@ -212,7 +214,7 @@ describe "JsonqlCompiler", ->
             { type: "field", tableAlias: "abc1", column: "p" }
             { type: "field", tableAlias: "def1", column: "q" }
           ]}
-        })
+        }, {})
 
     it 'validates kind', ->
       assert.throws () =>
@@ -315,7 +317,7 @@ describe "JsonqlCompiler", ->
 
     describe "scalar", ->
       it "simple scalar", ->
-        @testExpr({ type: "scalar", expr: @a, from: { type: "table", table: "abc", alias: "abc1" } }, '(select ? from ABC as "ABC1")', [1])
+        @testExpr({ type: "scalar", expr: @a, from: { type: "table", table: "abc", alias: "abc1" } }, '(select ? from ABC as "a_abc1")', [1])
       it "scalar with orderBy expr", ->
         @testExpr({ 
           type: "scalar"
@@ -325,4 +327,4 @@ describe "JsonqlCompiler", ->
             expr: @b
             direction: "desc"
             }]
-        }, '(select ? from ABC as "ABC1" order by ? desc)', [1,2]) 
+        }, '(select ? from ABC as "a_abc1" order by ? desc)', [1,2]) 

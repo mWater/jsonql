@@ -49,7 +49,9 @@ References a field of an aliased table
 
 ### table
 
-Single table, aliased. { type: "table", table: tablename, alias: somealias }
+Single table, aliased. table can also refer to a CTE made by withs using its alias.
+
+`{ type: "table", table: tablename, alias: somealias }`
 
 ### join
 
