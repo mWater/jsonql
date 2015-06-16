@@ -19,6 +19,7 @@ Top level. Has
  orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) } (optional)
  limit: integer (optional)
  offset: integer (optional)
+ withs: common table expressions (optional). array of { query:, alias: }
 
 ### op
 

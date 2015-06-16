@@ -13,7 +13,7 @@ class MockSchemaMap extends SchemaMap
     return new SqlFragment(alias + "." + column.toUpperCase())
 
   mapTableAlias: (alias) ->
-    return alias.toUpperCase()
+    return "a_" + alias
 
 describe "JsonqlCompiler", ->
   beforeEach ->
@@ -139,6 +139,30 @@ describe "JsonqlCompiler", ->
     compiled = @compiler.compileQuery(query)
     assert.equal compiled.sql, 'select ? as "x" from ABC as "ABC1" offset ?'
     assert.deepEqual compiled.params, [4, 10]
+
+  it 'compiles query with withs', ->
+    withQuery = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
+      ]
+      from: { type: "table", table: "xyz", alias: "xyz1" }
+    }
+
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 4 }, alias: "x" }
+      ]
+      from: { type: "table", table: "wq", alias: "abc1" }
+      withs: [
+        { query: withQuery, alias: "wq" }
+      ]
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'with "WQ" as (select ? as "q" from XYZ as "XYZ1") select ? as "x" from WQ as "ABC1"'
+    assert.deepEqual compiled.params, [5, 4]
 
   it 'validates select aliases', ->
     assert.throws () =>
