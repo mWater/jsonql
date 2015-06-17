@@ -71,4 +71,4 @@ Join of two tables or joins.
 ### token
 
 Special literal token, used for PostGIS, etc.
-Currently "!bbox!" only
+Currently "!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"

@@ -229,7 +229,7 @@ module.exports = class JsonqlCompiler
       when "scalar"
         return @compileScalar(expr, aliases)
       when "token"
-        if expr.token in ['!bbox!']
+        if expr.token in ["!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"]
           return new SqlFragment(expr.token)
         throw new Error("Unsupported token #{expr.token}")
       else
