@@ -68,7 +68,7 @@ module.exports = class JsonqlCompiler
         throw new Error("Invalid groupBy")
       if query.groupBy.length > 0
         frag.append(" group by ")
-          .append(SqlFragment.join(_.map(query.groupBy, (g) -> new SqlFragment("?", [g])), ", "))
+          .append(SqlFragment.join(_.map(query.groupBy, (g) -> new SqlFragment("#{g}")), ", "))
 
     # Add order by
     if query.orderBy
