@@ -29,7 +29,6 @@ module.exports = class JsonqlCompiler
         # Add aliases to "" to indicate that CTE aliases are safe
         aliases[w.alias] = ""
 
-      console.log withClauses
       frag.append("with ")
       frag.append(SqlFragment.join(withClauses, ", "))
       frag.append(" ")
@@ -45,7 +44,7 @@ module.exports = class JsonqlCompiler
 
     # Add from
     frag.append(" from ")
-    frag.append(from.sql)
+    frag.append(from)
 
     # Add where
     if query.where
@@ -277,19 +276,12 @@ module.exports = class JsonqlCompiler
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
     from = @compileFrom(query.from, aliases)
 
-    # Check that no overlap with existing aliases
-    if _.intersection(_.keys(from.aliases), _.keys(aliases)).length > 0
-      throw new Error("Re-used alias in scalar subquery")
-
-    # Combine aliases
-    aliases = _.extend({}, aliases, from.aliases)
-
     # Compile single select expression
     frag.append(@compileExpr(query.expr, aliases))
 
     # Add from
     frag.append(" from ")
-    frag.append(from.sql)
+    frag.append(from)
 
     # Add where
     if query.where
