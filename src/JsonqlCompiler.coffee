@@ -96,6 +96,16 @@ module.exports = class JsonqlCompiler
   # aliases are dict of unmapped alias to table name, or list of fields for whitelisted tables (CTEs)
   compileSelect: (select, aliases) ->
     frag = @compileExpr(select.expr, aliases)
+
+    # Add over
+    if select.over
+      frag.append(" over (")
+      if select.over.partitionBy
+        frag.append("partition by ")
+        frag.append(SqlFragment.join(
+          _.map(select.over.partitionBy, (pb) => @compileExpr(pb, aliases)), ", "))
+      frag.append(")")
+
     frag.append(" as ")
 
     @validateAlias(select.alias)

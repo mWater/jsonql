@@ -33,6 +33,9 @@ Has
 Contains an expression and alias
 { type: "select", expr: expression, alias: alias of expression }
 
+Can also contain `over` for window functions
+over: { partitionBy: [ list of expressions ]}
+
 ### scalar 
 
 Scalar subquery. Has { expr: expr, where: boolean expression, from: join or table, order: expr, limit: integer }

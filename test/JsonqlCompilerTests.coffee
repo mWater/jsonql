@@ -202,9 +202,11 @@ describe "JsonqlCompiler", ->
     select = { expr: { type: "op", op: "row_number", exprs: [] }, alias: "abc" }
     assert.equal @compiler.compileSelect(select, {}).sql, "row_number() as \"abc\""
 
-  # it 'compiles select over', ->
-  #   select = { expr: { type: "op", op: "row_number", exprs: [] },   alias: "abc" }
-  #   @compiler.compileSelect(select, "test", "test")
+  it 'compiles select over with partitionBy', ->
+    over = { partitionBy: [{ type: "field", tableAlias: "abc", column: "x" }] }
+    select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
+    sql = @compiler.compileSelect(select, { abc: "def" })
+    assert.equal sql.sql, "row_number() over (partition by a_abc.X) as \"xyz\""
 
   describe "compiles froms", ->
     it 'compiles table', ->
