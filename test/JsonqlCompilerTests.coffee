@@ -152,7 +152,7 @@ describe "JsonqlCompiler", ->
     query = { 
       type: "query"
       selects: [
-        { type: "select", expr: { type: "literal", value: 4 }, alias: "x" }
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "q" }, alias: "x" }
       ]
       from: { type: "table", table: "wq", alias: "abc1" }
       withs: [
@@ -161,19 +161,50 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select ? as "x" from a_wq as "a_abc1"'
-    assert.deepEqual compiled.params, [5, 4]
+    assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select a_abc1.q as "x" from a_wq as "a_abc1"'
+    assert.deepEqual compiled.params, [5]
+
+  it 'check that with columns exist', ->
+    withQuery = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
+      ]
+      from: { type: "table", table: "xyz", alias: "xyz1" }
+    }
+
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "xyzzy" }, alias: "x" }
+      ]
+      from: { type: "table", table: "wq", alias: "abc1" }
+      withs: [
+        { query: withQuery, alias: "wq" }
+      ]
+    }
+
+    assert.throws () =>
+      compiled = @compiler.compileQuery(query)
 
   it 'validates select aliases', ->
     assert.throws () =>
       select = { expr: { type: "literal", value: 4 }, alias: "???" }
-      @compiler.compileSelect(select, "test", "test")
+      @compiler.compileSelect(select, { test: "test" })
 
   it 'validates aliases', ->
     assert.throws () => @compiler.validateAlias("1234")
     assert.throws () => @compiler.validateAlias("ab c")
     assert.throws () => @compiler.validateAlias("ab'c")
     @compiler.validateAlias("abc")
+
+  it 'compiles select with function', ->
+    select = { expr: { type: "op", op: "row_number", exprs: [] }, alias: "abc" }
+    assert.equal @compiler.compileSelect(select, {}).sql, "row_number() as \"abc\""
+
+  # it 'compiles select over', ->
+  #   select = { expr: { type: "op", op: "row_number", exprs: [] },   alias: "abc" }
+  #   @compiler.compileSelect(select, "test", "test")
 
   describe "compiles froms", ->
     it 'compiles table', ->

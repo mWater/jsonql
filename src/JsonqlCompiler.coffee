@@ -8,13 +8,16 @@ module.exports = class JsonqlCompiler
     @nextId = 1
 
   # Compile a query made up of selects, from, where, order, limit, skip
-  # Aliases are known table aliases to use. Alias that maps to "" is a CTE or subquery that does not need 
-  # escaping
-  compileQuery: (query, aliases = {}) ->
+  # `aliases` are aliases to tables which have a particular row already selected
+  # for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
+  # expression, so it already has a row selected.
+  # ctes are aliases for common table expressions. They are a map of alias to list of fields.
+  compileQuery: (query, aliases = {}, ctes = {}) ->
     frag = new SqlFragment()
 
     # Make a copy for use internally
     aliases = _.clone(aliases)
+    ctes = _.clone(ctes)
 
     # Compile withs
     if query.withs and query.withs.length > 0
@@ -26,8 +29,13 @@ module.exports = class JsonqlCompiler
         f.append(")")
         withClauses.push(f)
 
-        # Add aliases to "" to indicate that CTE aliases are safe
-        aliases[w.alias] = ""
+        # Add to cte tables
+        if ctes[w.alias]
+          throw new Error("CTE alias #{w.alias} in use")
+
+        # Get list of fields of cte
+        fields = _.map(w.query.selects, (s) -> s.alias)
+        ctes[w.alias] = fields
 
       frag.append("with ")
       frag.append(SqlFragment.join(withClauses, ", "))
@@ -36,7 +44,7 @@ module.exports = class JsonqlCompiler
     frag.append('select ')
 
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    from = @compileFrom(query.from, aliases)
+    from = @compileFrom(query.from, aliases, ctes)
 
     # Compile selects
     selects = _.map(query.selects, (s) => @compileSelect(s, aliases))
@@ -85,7 +93,7 @@ module.exports = class JsonqlCompiler
     return frag
 
   # select is { expr: <expr>, alias: <string> }
-  # aliases are dict of unmapped alias to table name
+  # aliases are dict of unmapped alias to table name, or list of fields for whitelisted tables (CTEs)
   compileSelect: (select, aliases) ->
     frag = @compileExpr(select.expr, aliases)
     frag.append(" as ")
@@ -96,7 +104,8 @@ module.exports = class JsonqlCompiler
     return frag
 
   # Compiles table or join returning sql and modifying aliases
-  compileFrom: (from, aliases) ->
+  # ctes are aliases for common table expressions. They are a map of alias to list of fields.
+  compileFrom: (from, aliases = {}, ctes = {}) ->
     switch from.type 
       when "table"
         # Validate alias
@@ -106,11 +115,11 @@ module.exports = class JsonqlCompiler
         if aliases[from.alias]?
           throw new Error("Alias #{from.alias} in use")
 
-        # If from.table is an existing alias, use it directly
-        if aliases[from.table]?
-          # Save alias
-          aliases[from.alias] = "" # Save as known non-table
+        # If from cte, alias to list of fields
+        if ctes[from.table]
+          aliases[from.alias] = ctes[from.table]
 
+          # Reference the CTE by its alias and alias the resulting table
           return new SqlFragment(@schemaMap.mapTableAlias(from.table))
             .append(' as "')
             .append(@schemaMap.mapTableAlias(from.alias))
@@ -177,6 +186,7 @@ module.exports = class JsonqlCompiler
     return frag
 
   # Compiles an expression
+  # aliases are dict of unmapped alias to table name, or list of fields for whitelisted tables (CTEs)
   compileExpr: (expr, aliases) ->
     if not aliases?
       throw new Error("Missing aliases")
@@ -195,8 +205,16 @@ module.exports = class JsonqlCompiler
         return @compileOpExpr(expr, aliases)
       when "field"
         # Check that alias exists
-        if not aliases[expr.tableAlias]
+        if not aliases[expr.tableAlias]?
           throw new Error("Alias #{expr.tableAlias} unknown")
+
+        # If a list of fields (from a CTE), check that field is known
+        if _.isArray(aliases[expr.tableAlias])
+          if expr.column not in aliases[expr.tableAlias]
+            throw new Error("Unknown column #{expr.column} of #{expr.tableAlias}")
+
+          return new SqlFragment(@schemaMap.mapTableAlias(expr.tableAlias)).append('.').append(expr.column)
+
         return @schemaMap.mapColumn(aliases[expr.tableAlias], expr.column, @schemaMap.mapTableAlias(expr.tableAlias))
       when "scalar"
         return @compileScalar(expr, aliases)
@@ -220,6 +238,7 @@ module.exports = class JsonqlCompiler
       "var"
       "varp"
       "ST_Transform"
+      "row_number"
     ]
 
     switch expr.op
