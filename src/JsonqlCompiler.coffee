@@ -165,6 +165,28 @@ module.exports = class JsonqlCompiler
             .append(" on ")
             .append(onSql)
             .append(")")
+      when "subquery"
+        # Validate alias
+        @validateAlias(from.alias)
+
+        # If alias already in use, refuse
+        if aliases[from.alias]?
+          throw new Error("Alias #{from.alias} in use")
+
+        # Compile query
+        subquery = @compileQuery(from.query, aliases, ctes)
+
+        # Get list of fields of subquery
+        fields = _.map(from.query.selects, (s) -> s.alias)
+        
+        # Record alias as a list of fields
+        aliases[from.alias] = fields
+
+        return new SqlFragment("(").append(subquery)
+          .append(') as "')
+          .append(@schemaMap.mapTableAlias(from.alias))
+          .append('"')
+
       else
         throw new Error("Unsupported type #{from.type}")
 

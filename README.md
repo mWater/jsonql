@@ -13,7 +13,7 @@ Everything is a json object: { type: type of object, ... }. Expressions can be l
 
 Top level. Has
  selects: [select]
- from: join or table
+ from: join or table or subquery
  where: boolean expression (optional)
  groupBy: array of ordinals (1 based) (optional)
  orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) } (optional)
@@ -67,6 +67,12 @@ Join of two tables or joins.
 	kind: "inner"/"left"/"right", 
 	on: expression to join on
 }
+
+### subquery
+
+query, aliased.
+
+`{ type: "subquery", query: subquery, alias: somealias }`
 
 ### token
 

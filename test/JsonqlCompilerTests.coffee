@@ -140,6 +140,27 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1" offset ?'
     assert.deepEqual compiled.params, [4, 10]
 
+  it 'compiles query with subqueries', ->
+    subquery = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
+      ]
+      from: { type: "table", table: "xyz", alias: "xyz1" }
+    }
+
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "q" }, alias: "x" }
+      ]
+      from: { type: "subquery", query: subquery, alias: "abc1" }
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select a_abc1.q as "x" from (select ? as "q" from XYZ as "a_xyz1") as "a_abc1"'
+    assert.deepEqual compiled.params, [5]
+
   it 'compiles query with withs', ->
     withQuery = { 
       type: "query"
