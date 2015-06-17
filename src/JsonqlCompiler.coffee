@@ -237,7 +237,6 @@ module.exports = class JsonqlCompiler
       "stdevp"
       "var"
       "varp"
-      "ST_Transform"
       "row_number"
     ]
 
@@ -277,7 +276,8 @@ module.exports = class JsonqlCompiler
           .append(@compileExpr(expr.exprs[0], aliases))
           .append("::text)")
       else
-        if expr.op in functions
+        # Whitelist known functions and all PostGIS
+        if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)
           inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases)), ", ")
           return new SqlFragment(expr.op + "(")
             .append(inner)
