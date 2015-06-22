@@ -7,8 +7,8 @@
  * @return array Either ["json" => jsonEncodedString] or ["error" => errorMsg]
  */
 function query($jqlQry, $tableMapFile, $con) {
-  $projectDir = dirname(dirname(__FILE__));
-  $compileJs = "$projectDir/lib/CompileQuery.js";
+  $libDir = dirname(__FILE__);
+  $compileJs = "$libDir/CompileQuery.js";
 
   # Execute the JsonQL transform in Node
   $jqlJson = json_encode($jqlQry);

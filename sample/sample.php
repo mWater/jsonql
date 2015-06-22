@@ -1,6 +1,6 @@
 <?php 
 $rootDir = dirname(dirname(__FILE__));
-include "$rootDir/src/query.php";
+include "$rootDir/lib/query.php";
 
 #CONNECT TO DATABASE
 $host = "localhost"; 
