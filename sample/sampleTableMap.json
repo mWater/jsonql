@@ -1,0 +1,9 @@
+[ { "id": "table1", "sql": "table1", "columns": [
+    { "id": "col1", "sql": "{alias}.col1" },
+    { "id": "col2", "sql": "({alias}.col3 + {alias}.col4)" }]},
+  { "id": "abc", "sql": "abcsql", "columns": [
+    { "id": "x", "sql": "{alias}.col1" },
+    { "id": "col2", "sql": "({alias}.col3 + {alias}.col4)" }]},
+  { "id": "cars", "sql": "cars", "columns": [
+    { "id": "name", "sql": "{alias}.name" },
+    { "id": "price", "sql": "{alias}.price" }]}]
