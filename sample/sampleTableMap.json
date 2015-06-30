@@ -1,6 +1,6 @@
 [ { "id": "table1", "name": "First Table", "sql": "table1", "columns": [
-    { "id": "col1", "sql": "{alias}.col1" },
-    { "id": "col2", "sql": "({alias}.col3 + {alias}.col4)" }]},
+    { "id": "col1", "name": "Column 1", "sql": "{alias}.col1" },
+    { "id": "col2", "name": "Column 2", "sql": "({alias}.col3 + {alias}.col4)" }]},
   { "id": "abc", "name": "Abc Sql", "sql": "abcsql", "columns": [
     { "id": "x", "sql": "{alias}.col1" },
     { "id": "col2", "sql": "({alias}.col3 + {alias}.col4)" }]},
