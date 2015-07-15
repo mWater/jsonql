@@ -1,9 +1,10 @@
 assert = require('chai').assert
 LookupSchemaCompiler = require '../src/LookupSchemaCompiler'
 
-abcTableMap = 
-  [ { "id": "abc", "sql": "ABC", "columns": [
+abcTableMap = {
+  tables: [ { "id": "abc", "sql": "ABC", "columns": [
       { "id": "p", "sql": "{alias}.P" }]}]
+  }
       
 abcQuery = { 
   type: "query"

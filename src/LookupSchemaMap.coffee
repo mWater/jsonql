@@ -9,17 +9,17 @@ module.exports = class LookupSchemaMap extends SchemaMap
  
   # Map a table
   mapTable: (table) -> 
-    tableExpr = _.find(@schema, {'id': table})
+    tableExpr = _.find(@schema.tables, {id: table})
     if !tableExpr
       throw new Error("Invalid table #{table}")
     return new SqlFragment(tableExpr.sql)
  
-  # Map a column reference of a table aliased as escaped alias alias
+  # Map a column reference of a table aliased as escaped {alias}
   mapColumn: (table, column, alias) ->
-    tableExpr = _.find(@schema, {'id': table})
+    tableExpr = _.find(@schema.tables, {id: table})
     if !tableExpr
       throw new Error("Invalid table #{table}")
-    columnExpr = _.find(tableExpr.columns, {'id': column})
+    columnExpr = _.find(tableExpr.columns, {id: column})
     if !columnExpr
       throw new Error("Invalid column #{column}")    
     sql = columnExpr.sql.replace(/\{alias\}/g, alias)
