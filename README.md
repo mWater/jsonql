@@ -23,7 +23,15 @@ Top level. Has
 
 ### op
 
-Expression. Has op: >, <, <>, =, >=, <=, +, -, *, /, ~, ~*, like, and, or, not, is null, is not null
+Expression. Has op:
+
+>, <, <>, =, >=, <=, 
++, -, *, /, ~, ~*, 
+like, and, or, not, is null, is not null
+avg, min, max, row_number, etc.
+
+For count(*), use count with no expressions.
+
 Has 
  exprs: [expression]
  modifier: "any", "all" (optional)

@@ -312,6 +312,11 @@ module.exports = class JsonqlCompiler
         # Whitelist known functions and all PostGIS
         if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)
           inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases)), ", ")
+
+          # Handle special case of count(*)
+          if expr.op == "count" and inner.isEmpty()
+            inner = "*"
+            
           return new SqlFragment(expr.op + "(")
             .append(inner)
             .append(")")
