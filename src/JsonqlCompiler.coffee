@@ -208,7 +208,7 @@ module.exports = class JsonqlCompiler
       frag.append(" order by ")
         .append(SqlFragment.join(_.map(orderBy, (o) => 
           if _.isNumber(o.ordinal)
-            f = new SqlFragment("?", [o.ordinal])
+            f = new SqlFragment("#{o.ordinal}")
           else
             f = @compileExpr(o.expr, aliases)
           if o.direction

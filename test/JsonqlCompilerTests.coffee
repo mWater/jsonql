@@ -92,8 +92,8 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by ? desc, ?'
-    assert.deepEqual compiled.params, [1, 2]
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by 1 desc, 2'
+    assert.deepEqual compiled.params, []
 
   it 'compiles query with orderBy expr', ->
     query = { 
