@@ -270,6 +270,9 @@ module.exports = class JsonqlCompiler
       "var"
       "varp"
       "row_number"
+      "left"
+      "right"
+      "substr"
     ]
 
     switch expr.op
