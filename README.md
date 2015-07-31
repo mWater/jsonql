@@ -36,6 +36,14 @@ Has
  exprs: [expression]
  modifier: "any", "all" (optional)
 
+### case
+
+Case expression. Has:
+
+input: optional input expression
+cases: Array of cases. Each has: when, then
+else: optional else expression
+
 ### select
 
 Contains an expression and alias

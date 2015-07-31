@@ -254,6 +254,8 @@ module.exports = class JsonqlCompiler
         if expr.token in ["!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"]
           return new SqlFragment(expr.token)
         throw new Error("Unsupported token #{expr.token}")
+      when "case"
+        return @compileCaseExpr(expr, aliases)
       else
         throw new Error("Unsupported type #{expr.type}")
 
@@ -372,6 +374,30 @@ module.exports = class JsonqlCompiler
 
     frag.append(")")
     return frag
+
+  compileCaseExpr: (expr, aliases) ->
+    frag = new SqlFragment('case ')
+
+    if expr.input
+      frag.append(@compileExpr(expr.input, aliases))
+      frag.append(" ")
+
+    for c in expr.cases
+      frag.append("when ")
+      frag.append(@compileExpr(c.when, aliases))
+      frag.append(" then ")
+      frag.append(@compileExpr(c.then, aliases))
+      frag.append(" ")
+
+    if expr.else
+      frag.append("else ")
+      frag.append(@compileExpr(expr.else, aliases))
+      frag.append(" ")
+
+    frag.append("end")
+
+
+
 
   # Validate alias string. Throws if bad
   validateAlias: (alias) ->

@@ -288,6 +288,8 @@ describe "JsonqlCompiler", ->
       @a = { type: "literal", value: 1 }
       @b = { type: "literal", value: 2 }
       @c = { type: "literal", value: 3 }
+      @d = { type: "literal", value: 4 }
+      @e = { type: "literal", value: 5 }
 
       @testExpr = (expr, sql, params, aliases={}) ->
         fr = @compiler.compileExpr(expr, aliases)
@@ -310,6 +312,20 @@ describe "JsonqlCompiler", ->
       @testExpr({ type: "token", token: "!bbox!"}, "!bbox!", [])
       assert.throws () => @testExpr({ type: "token", token: "bbox"}, "!bbox!", [])
 
+    describe "case", ->
+      it "does input case", ->
+        @testExpr({ type: "case", input: @a, cases: [{ when: @b, then: @c }]}, 
+          "case ? when ? then ? end", [1, 2, 3]
+          )
+      
+      it "does multiple case with else", ->
+        @testExpr({ type: "case", cases: [
+          { when: @a, then: @b }
+          { when: @c, then: @d }
+          ], else: @e }, 
+          "case when ? then ? when ? then ? else ? end", [1, 2, 3, 4, 5]
+        )
+      
     describe "ops", ->
       it '> < >= <= = <>', ->
         @testExpr({ type: "op", op: ">", exprs: [@a, @b] }, "(? > ?)", [1, 2])
@@ -387,3 +403,4 @@ describe "JsonqlCompiler", ->
             direction: "desc"
             }]
         }, '(select ? from ABC as "a_abc1" order by ? desc)', [1,2]) 
+
