@@ -308,7 +308,7 @@ module.exports = class JsonqlCompiler
         return new SqlFragment("(not ")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(")")
-      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal"
+      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp"
         return new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(expr.op)
@@ -395,9 +395,6 @@ module.exports = class JsonqlCompiler
       frag.append(" ")
 
     frag.append("end")
-
-
-
 
   # Validate alias string. Throws if bad
   validateAlias: (alias) ->
