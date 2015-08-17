@@ -8,11 +8,11 @@ module.exports = class LookupSchemaMap extends SchemaMap
     @schema = schema
  
   # Map a table
-  mapTable: (table) -> 
-    tableExpr = _.find(@schema.tables, {id: table})
-    if !tableExpr
-      throw new Error("Invalid table #{table}")
-    return new SqlFragment(tableExpr.sql)
+  mapTable: (tableId) -> 
+    table = _.find(@schema.tables, {id: tableId})
+    if !table
+      throw new Error("Invalid table #{tableId}")
+    return new SqlFragment(table.sql or table.id)
  
   # Map a column reference of a table aliased as escaped {alias}
   mapColumn: (tableId, columnId, alias) ->
