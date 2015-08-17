@@ -15,16 +15,32 @@ module.exports = class LookupSchemaMap extends SchemaMap
     return new SqlFragment(tableExpr.sql)
  
   # Map a column reference of a table aliased as escaped {alias}
-  mapColumn: (table, column, alias) ->
-    tableExpr = _.find(@schema.tables, {id: table})
-    if !tableExpr
-      throw new Error("Invalid table #{table}")
-    columnExpr = _.find(tableExpr.columns, {id: column})
-    if !columnExpr
-      throw new Error("Invalid column #{column}")    
-    sql = columnExpr.sql.replace(/\{alias\}/g, alias)
+  mapColumn: (tableId, columnId, alias) ->
+    table = _.find(@schema.tables, {id: tableId})
+    if !table
+      throw new Error("Invalid table #{tableId}")
+
+    column = @findColumn(table.contents, columnId)
+    if !column
+      throw new Error("Invalid column #{columnId}")    
+
+    # Get sql
+    if column.sql
+      sql = column.sql.replace(/\{alias\}/g, alias)
+    else
+      sql = "#{alias}.#{column.id}"
+
     return new SqlFragment(sql)
- 
+
+  # Find a column in a table or section
+  findColumn: (contents, columnId) ->
+    for item in contents
+      if item.type == "section"
+        subitem = @findColumn(item.contents, columnId)
+        if subitem
+          return subitem
+      else if item.id == columnId
+        return item
   # Escapes a table alias. Should prefix with alias_ or similar for security
   mapTableAlias: (alias) ->
     return "alias_" + alias

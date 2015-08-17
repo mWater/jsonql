@@ -1,0 +1,1 @@
+coffee ../src/CompileQuery.coffee ./sampleSchema.yaml '{ "type": "query", "selects": [{ "type": "select", "expr": { "type": "field", "tableAlias": "abc", "column": "program_name" }, "alias": "x" }], "from": { "type": "table", "table": "tablexyz", "alias": "abc" }}'

@@ -15,7 +15,9 @@
   "author": "Clayton Grassick",
   "license": "GPLv3",
   "dependencies": {
+    "js-yaml": "^3.3.1",
     "lodash": "^3.9.3",
+    "minimist": "^1.1.3",
     "pg-escape": "^0.1.0"
   },
   "devDependencies": {
