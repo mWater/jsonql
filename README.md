@@ -27,7 +27,7 @@ Expression. Has op:
 
 >, <, <>, =, >=, <=, 
 +, -, *, /, ~, ~*, 
-like, and, or, not, is null, is not null
+like, and, or, not, is null, is not null, between
 avg, min, max, row_number, etc.
 
 For count(*), use count with no expressions.
