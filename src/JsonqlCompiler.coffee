@@ -310,6 +310,14 @@ module.exports = class JsonqlCompiler
         return new SqlFragment("(not ")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(")")
+      when "between"
+        return new SqlFragment("(")
+          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(" between ")
+          .append(@compileExpr(expr.exprs[1], aliases))
+          .append(" and ")
+          .append(@compileExpr(expr.exprs[2], aliases))
+          .append(")")
       when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean"
         return new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))

@@ -376,6 +376,9 @@ describe "JsonqlCompiler", ->
         @testExpr({ type: "op", op: "->>", exprs: [@a, @b] }, "(? ->> ?)", [1, 2])
         @testExpr({ type: "op", op: "#>>", exprs: [@a, @b] }, "(? #>> ?)", [1, 2])
 
+      it 'between', ->
+        @testExpr({ type: "op", op: "between", exprs: [@a, @b, @c] }, "(? between ? and ?)", [1, 2, 3])
+
       it 'aggregate expressions', ->
         @testExpr({ type: "op", op: "avg", exprs: [@a] }, "avg(?)", [1])
         @testExpr({ type: "op", op: "min", exprs: [@a] }, "min(?)", [1])
