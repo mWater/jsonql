@@ -318,7 +318,7 @@ module.exports = class JsonqlCompiler
           .append(" and ")
           .append(@compileExpr(expr.exprs[2], aliases))
           .append(")")
-      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean"
+      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean", "::uuid[]", "::text[]"
         return new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(expr.op)
