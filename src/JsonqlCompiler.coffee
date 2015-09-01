@@ -392,7 +392,7 @@ module.exports = class JsonqlCompiler
   compileCaseExpr: (expr, aliases) ->
     frag = new SqlFragment('case ')
 
-    if expr.input
+    if expr.input?
       frag.append(@compileExpr(expr.input, aliases))
       frag.append(" ")
 
@@ -403,7 +403,7 @@ module.exports = class JsonqlCompiler
       frag.append(@compileExpr(c.then, aliases))
       frag.append(" ")
 
-    if expr.else
+    if expr.else?
       frag.append("else ")
       frag.append(@compileExpr(expr.else, aliases))
       frag.append(" ")
