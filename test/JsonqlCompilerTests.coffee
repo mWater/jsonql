@@ -393,6 +393,19 @@ describe "JsonqlCompiler", ->
         assert.throws () =>
           @testExpr({ type: "op", op: "xyz", exprs: [@a] }, "xyz(?)", [1])
 
+      it "creates exists", ->
+        query = { 
+          type: "query"
+          selects: [
+            { type: "select", expr: { type: "literal", value: 4 }, alias: "x" }
+          ]
+          from: { type: "table", table: "abc", alias: "abc1" }
+        }
+
+        @testExpr({ type: "op", op: "exists", exprs:[
+          query
+          ] }, 'exists (select ? as "x" from ABC as "a_abc1")', [4])
+
     describe "scalar", ->
       it "simple scalar", ->
         @testExpr({ type: "scalar", expr: @a, from: { type: "table", table: "abc", alias: "abc1" } }, '(select ? from ABC as "a_abc1")', [1])
@@ -406,4 +419,3 @@ describe "JsonqlCompiler", ->
             direction: "desc"
             }]
         }, '(select ? from ABC as "a_abc1" order by ? desc)', [1,2]) 
-

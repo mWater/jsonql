@@ -323,6 +323,10 @@ module.exports = class JsonqlCompiler
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(expr.op)
           .append(")")
+      when "exists"
+        return new SqlFragment("exists (")
+          .append(@compileQuery(expr.exprs[0], aliases))
+          .append(")")
       else
         # Whitelist known functions and all PostGIS
         if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)
