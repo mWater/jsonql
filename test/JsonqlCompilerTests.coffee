@@ -32,6 +32,16 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1"'
     assert.deepEqual compiled.params, [4]
 
+  it 'compiles query with null select', ->
+    query = { 
+      type: "query"
+      selects: []
+      from: { type: "table", table: "abc", alias: "abc1" }
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select null from ABC as "a_abc1"'
+
   it 'compiles query with field', ->
     query = { 
       type: "query"
@@ -215,8 +225,7 @@ describe "JsonqlCompiler", ->
 
   it 'validates aliases', ->
     assert.throws () => @compiler.validateAlias("1234")
-    assert.throws () => @compiler.validateAlias("ab c")
-    assert.throws () => @compiler.validateAlias("ab'c")
+    assert.throws () => @compiler.validateAlias("ab;c")
     @compiler.validateAlias("abc")
 
   it 'compiles select with function', ->

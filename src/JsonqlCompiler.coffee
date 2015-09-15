@@ -48,7 +48,12 @@ module.exports = class JsonqlCompiler
 
     # Compile selects
     selects = _.map(query.selects, (s) => @compileSelect(s, aliases))
-    frag.append(SqlFragment.join(selects, ", "))
+
+    # Handle null select
+    if selects.length == 0
+      frag.append("null")
+    else
+      frag.append(SqlFragment.join(selects, ", "))
 
     # Add from
     frag.append(" from ")
