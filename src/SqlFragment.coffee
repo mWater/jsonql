@@ -37,6 +37,9 @@ module.exports = class SqlFragment
       if typeof(val) == "number"
         return "" + val
 
+      if typeof(val) == "boolean"
+        return if val then "TRUE" else "FALSE"
+
       if _.isArray(val)
         return "array[" + _.map(val, escapeLiteral).join(',') + "]"
 
