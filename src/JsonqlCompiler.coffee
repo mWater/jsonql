@@ -164,9 +164,9 @@ module.exports = class JsonqlCompiler
 
         # Combine
         return new SqlFragment("(")
-            .append(left.sql)
+            .append(left)
             .append(" " + from.kind + " join ")
-            .append(right.sql)
+            .append(right)
             .append(" on ")
             .append(onSql)
             .append(")")
