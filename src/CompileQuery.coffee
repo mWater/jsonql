@@ -46,6 +46,7 @@ compiler = new JsonqlCompiler(schemaMap)
 
 try 
   result = compiler.compileQuery(query)
-  console.log(JSON.stringify({query: result}))
+  # Inline query to have better control over sql
+  console.log(JSON.stringify({query: result.toInline(), params: []}))
 catch err
   return respondError("Cannot compile query: #{err}")
