@@ -26,6 +26,25 @@ module.exports = class SqlFragment
     
   # Make into sql with parameters inlined
   toInline: ->
+    # Escapes a literal value
+    escapeLiteral = (val) ->
+      if val == null
+        return "null"
+
+      if typeof(val) == "string"
+        return pgescape.literal(val)
+
+      if typeof(val) == "number"
+        return "" + val
+
+      if _.isArray(val)
+        return "array[" + _.map(val, escapeLiteral).join(',') + "]"
+
+      if typeof(val) == "object"
+        return "(" + pgescape.literal(JSON.stringify(val)) + "::json)"
+
+      throw new Error("Unsupported literal value: " + val)
+
     # Substitute parameters
     n = 0
     sql = @sql.replace(/\?/g, (str) =>
@@ -33,23 +52,7 @@ module.exports = class SqlFragment
       # Check type
       param = @params[n]
       n += 1
-
-      if param == null
-        return "null"
-
-      if typeof(param) == "string"
-        return pgescape.literal(param)
-
-      if typeof(param) == "number"
-        return "" + param
-
-      if _.isArray(param)
-        return "array[" + _.map(param, (p) -> pgescape.literal(p)).join(',') + "]"
-
-      if typeof(param) == "object"
-        return "(" + pgescape.literal(JSON.stringify(param)) + "::json)"
-
-      throw new Error("Unsupported parameter: " + param)
+      return escapeLiteral(param)
     )
 
     return sql
