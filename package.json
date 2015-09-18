@@ -8,8 +8,7 @@
   },
   "repository": "git@github.com:mWater/jsonql.git",
   "scripts": {
-    "test": "testem ci",
-    "testem": "testem",
+    "test": "mocha -R tap --compilers coffee:coffee-script/register test/*Tests.coffee",
     "prepublish": "gulp"
   },
   "author": "Clayton Grassick",
@@ -30,7 +29,6 @@
     "gulp-coffee": "^2.3.1",
     "gulp-util": "^3.0.3",
     "mocha": "^2.2.5",
-    "testem": "^0.8.3",
     "vinyl-source-stream": "^1.0.0"
   }
 }
