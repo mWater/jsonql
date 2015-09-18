@@ -15,7 +15,7 @@ Top level. Has
  selects: [select]
  from: join or table or subquery
  where: boolean expression (optional)
- groupBy: array of ordinals (1 based) (optional)
+ groupBy: array of ordinals (1 based) or expressions (optional)  
  orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) } (optional)
  limit: integer (optional)
  offset: integer (optional)

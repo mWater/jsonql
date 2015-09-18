@@ -72,7 +72,7 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select a_abc1.P as "x" from ABC as "a_abc1" where (a_abc1.Q > ?)'
     assert.deepEqual compiled.params, [5]
 
-  it 'compiles query with groupBy', ->
+  it 'compiles query with groupBy ordinals', ->
     query = { 
       type: "query"
       selects: [
@@ -86,6 +86,22 @@ describe "JsonqlCompiler", ->
     compiled = @compiler.compileQuery(query)
     assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" group by 1, 2'
     assert.deepEqual compiled.params, []
+
+  it 'compiles query with groupBy expr', ->
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "p" }, alias: "x" }
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "q" }, alias: "y" }
+      ]
+      from: { type: "table", table: "abc", alias: "abc1" }
+      groupBy: [{ type: "field", tableAlias: "abc1", column: "p" }, 2]
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" group by a_abc1.P, 2'
+    assert.deepEqual compiled.params, []
+
 
   it 'compiles query with orderBy ordinal', ->
     query = { 
