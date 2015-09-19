@@ -104,7 +104,7 @@ module.exports = class JsonqlCompiler
     return frag
 
   # select is { expr: <expr>, alias: <string> }
-  # aliases are dict of unmapped alias to table name, or list of fields for whitelisted tables (CTEs)
+  # aliases are dict of unmapped alias to table name, or list of fields for whitelisted tables (CTEs or subqueries)
   compileSelect: (select, aliases) ->
     frag = @compileExpr(select.expr, aliases)
 
@@ -251,7 +251,7 @@ module.exports = class JsonqlCompiler
         if not aliases[expr.tableAlias]?
           throw new Error("Alias #{expr.tableAlias} unknown")
 
-        # If a list of fields (from a CTE), check that field is known
+        # If a list of fields (from a CTE or subquery), check that field is known
         if _.isArray(aliases[expr.tableAlias])
           if expr.column not in aliases[expr.tableAlias]
             throw new Error("Unknown column #{expr.column} of #{expr.tableAlias}")
@@ -423,7 +423,7 @@ module.exports = class JsonqlCompiler
 
   # Validate alias string. Throws if bad
   validateAlias: (alias) ->
-    if not alias.match(/^[a-zA-Z][a-zA-Z_0-9 ().,]*$/)
+    if not alias.match(/^[a-zA-Z][a-zA-Z_0-9. ]*$/)
       throw new Error("Invalid alias #{alias}")
 
 isInt = (x) ->
