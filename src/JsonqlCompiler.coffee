@@ -424,7 +424,7 @@ module.exports = class JsonqlCompiler
   # Validate alias string. Throws if bad
   validateAlias: (alias) ->
     if not alias.match(/^[_a-zA-Z][a-zA-Z_0-9. ]*$/)
-      throw new Error("Invalid alias #{alias}")
+      throw new Error("Invalid alias '#{alias}'")
 
 isInt = (x) ->
   return typeof(x)=='number' and (x%1) == 0
