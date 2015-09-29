@@ -50,8 +50,8 @@ else: optional else expression
 Contains an expression and alias
 { type: "select", expr: expression, alias: alias of expression }
 
-Can also contain `over` for window functions
-over: { partitionBy: [ list of expressions ]}
+Can also contain `over` for window functions. Both partitionBy and orderBy are optional
+over: { partitionBy: [ list of expressions ], orderBy: [ list of { expr: expression, direction: "asc"/"desc" } ]}
 
 ### scalar 
 

@@ -115,6 +115,8 @@ module.exports = class JsonqlCompiler
         frag.append("partition by ")
         frag.append(SqlFragment.join(
           _.map(select.over.partitionBy, (pb) => @compileExpr(pb, aliases)), ", "))
+      if select.over.orderBy
+        frag.append(@compileOrderBy(select.over.orderBy, aliases))
       frag.append(")")
 
     frag.append(" as ")
@@ -289,6 +291,7 @@ module.exports = class JsonqlCompiler
       "lpad"
       "rpad"
       "width_bucket"
+      "ntile"
     ]
 
     switch expr.op

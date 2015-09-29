@@ -254,6 +254,18 @@ describe "JsonqlCompiler", ->
     sql = @compiler.compileSelect(select, { abc: "def" })
     assert.equal sql.sql, "row_number() over (partition by a_abc.X) as \"xyz\""
 
+  it 'compiles select over with orderBy', ->
+    over = { orderBy: [ { expr: { type: "field", tableAlias: "abc", column: "x" }, direction: "asc" }] }
+    select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
+    sql = @compiler.compileSelect(select, { abc: "def" })
+    assert.equal sql.sql, "row_number() over ( order by a_abc.X asc) as \"xyz\""
+
+  it 'compiles select over', ->
+    over = { }
+    select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
+    sql = @compiler.compileSelect(select, { abc: "def" })
+    assert.equal sql.sql, "row_number() over () as \"xyz\""
+
   describe "compiles froms", ->
     it 'compiles table', ->
       aliases = {}
