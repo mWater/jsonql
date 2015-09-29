@@ -288,6 +288,7 @@ module.exports = class JsonqlCompiler
       "substr"
       "lpad"
       "rpad"
+      "width_bucket"
     ]
 
     switch expr.op
