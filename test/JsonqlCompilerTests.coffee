@@ -390,11 +390,16 @@ describe "JsonqlCompiler", ->
 
       it 'is not null', ->
         @testExpr({ type: "op", op: "is not null", exprs: [@a] }, "(? is not null)", [1])
-  
-      it '+ - * /', ->
+
+      it '+ - *', ->
         @testExpr({ type: "op", op: "+", exprs: [@a, @b] }, "(? + ?)", [1, 2])
         @testExpr({ type: "op", op: "-", exprs: [@a, @b] }, "(? - ?)", [1, 2])
         @testExpr({ type: "op", op: "*", exprs: [@a, @b] }, "(? * ?)", [1, 2])
+        @testExpr({ type: "op", op: "+", exprs: [@a, @b, @c] }, "(? + ? + ?)", [1, 2, 3])
+        @testExpr({ type: "op", op: "-", exprs: [@a, @b, @c] }, "(? - ? - ?)", [1, 2, 3])
+        @testExpr({ type: "op", op: "*", exprs: [@a, @b, @c] }, "(? * ? * ?)", [1, 2, 3])
+  
+      it '/', ->
         @testExpr({ type: "op", op: "/", exprs: [@a, @b] }, "(? / ?)", [1, 2])
 
       it '~ ~* like', ->
