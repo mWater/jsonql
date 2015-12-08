@@ -295,7 +295,7 @@ module.exports = class JsonqlCompiler
     ]
 
     switch expr.op
-      when ">", "<", ">=", "<=", "=", "<>", "/", "~", "~*", "like", "&&", "->>", "#>>"
+      when ">", "<", ">=", "<=", "=", "<>", "/", "~", "~*", "like", "&&", "->>", "#>>", "@>"
         frag = new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(new SqlFragment(" " + expr.op + " "))
@@ -333,7 +333,7 @@ module.exports = class JsonqlCompiler
           .append(" and ")
           .append(@compileExpr(expr.exprs[2], aliases))
           .append(")")
-      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean", "::uuid[]", "::text[]"
+      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean", "::uuid[]", "::text[]", "::json", "::jsonb"
         return new SqlFragment("(")
           .append(@compileExpr(expr.exprs[0], aliases))
           .append(expr.op)
