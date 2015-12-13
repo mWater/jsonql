@@ -292,6 +292,7 @@ module.exports = class JsonqlCompiler
       "rpad"
       "width_bucket"
       "ntile"
+      "coalesce"
     ]
 
     switch expr.op
