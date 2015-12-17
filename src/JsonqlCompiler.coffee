@@ -309,7 +309,7 @@ module.exports = class JsonqlCompiler
           frag.append(@compileExpr(expr.exprs[1], aliases))
             .append(")")
         return frag
-      when "and", "or", "+", "-", "*"
+      when "and", "or", "+", "-", "*", "||"
         if expr.exprs.length == 0
           return new SqlFragment()
         else if expr.exprs.length == 1
