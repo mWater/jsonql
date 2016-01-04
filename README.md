@@ -9,6 +9,12 @@ Everything is a json object: { type: type of object, ... }. Expressions can be l
 
 ## Types
 
+### literal
+
+Literal value. Has:
+  type: "literal"
+  value: some value (e.g. 5, "apple", etc.)
+
 ### query
 
 Top level. Has
