@@ -376,6 +376,7 @@ describe "JsonqlCompiler", ->
         @testExpr({ type: "op", op: "and", exprs: [] }, "", [])
         @testExpr({ type: "op", op: "and", exprs: [@a] }, "?", [1])
         @testExpr({ type: "op", op: "and", exprs: [@a, @b, @c] }, "(? and ? and ?)", [1, 2, 3])
+        @testExpr({ type: "op", op: "and", exprs: [{ type: "op", op: "and", exprs: [] }, { type: "op", op: "and", exprs: [@a] }] }, "?", [1])
 
       it 'or', ->
         @testExpr({ type: "op", op: "or", exprs: [] }, "", [])

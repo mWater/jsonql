@@ -310,12 +310,17 @@ module.exports = class JsonqlCompiler
             .append(")")
         return frag
       when "and", "or", "+", "-", "*", "||"
-        if expr.exprs.length == 0
+        compiledExprs = _.map(expr.exprs, (e) => @compileExpr(e, aliases))
+
+        # Remove blanks
+        compiledExprs = _.filter(compiledExprs, (e) -> not e.isEmpty())
+
+        if compiledExprs.length == 0
           return new SqlFragment()
-        else if expr.exprs.length == 1
-          return @compileExpr(expr.exprs[0], aliases)
+        else if compiledExprs.length == 1
+          return compiledExprs[0]
         else 
-          inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases)), " " + expr.op + " ")
+          inner = SqlFragment.join(compiledExprs, " " + expr.op + " ")
           return new SqlFragment("(").append(inner).append(")")
       when "is null", "is not null"
         return new SqlFragment("(")
