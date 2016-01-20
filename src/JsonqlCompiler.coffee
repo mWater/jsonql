@@ -293,6 +293,7 @@ module.exports = class JsonqlCompiler
       "width_bucket"
       "ntile"
       "coalesce"
+      "to_json"
       "convert_to_decimal"  # Custom function used for safely converting to decimal
     ]
 
