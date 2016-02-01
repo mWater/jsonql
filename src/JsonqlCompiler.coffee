@@ -213,8 +213,7 @@ module.exports = class JsonqlCompiler
         # Record alias as true to allow any field to be queried
         aliases[from.alias] = true
 
-        return new SqlFragment("(").append(subexpr)
-          .append(') as "')
+        return subexpr.append(' as "')
           .append(@schemaMap.mapTableAlias(from.alias))
           .append('"')
 

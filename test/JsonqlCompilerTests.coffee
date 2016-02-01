@@ -205,7 +205,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select a_abc1 as "x" from (json_array_elements(?)) as "a_abc1"'
+    assert.equal compiled.sql, 'select a_abc1 as "x" from json_array_elements(?) as "a_abc1"'
     assert.deepEqual compiled.params, [[{ a: 1 }, { a: 2 }]]
 
   it 'compiles query with withs', ->
