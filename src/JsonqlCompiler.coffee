@@ -274,7 +274,7 @@ module.exports = class JsonqlCompiler
         if aliases[expr.tableAlias] == true
           # If using column, put x."y"
           if expr.column
-            if not expr.column.match(/^[a-z][a-z0-9_]?$/)
+            if not expr.column.match(/^[a-z][a-z0-9_]*$/)
               throw new Error("Invalid column #{expr.column}")
             return new SqlFragment(@schemaMap.mapTableAlias(expr.tableAlias)).append('."').append(expr.column).append('"')
           else # Entire row
