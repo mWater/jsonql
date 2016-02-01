@@ -166,7 +166,7 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1" offset ?'
     assert.deepEqual compiled.params, [4, 10]
 
-  it 'compiles query with subqueries', ->
+  it 'compiles query with subquery query', ->
     subquery = { 
       type: "query"
       selects: [
@@ -184,8 +184,29 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'select a_abc1.q as "x" from (select ? as "q" from XYZ as "a_xyz1") as "a_abc1"'
+    assert.equal compiled.sql, 'select a_abc1."q" as "x" from (select ? as "q" from XYZ as "a_xyz1") as "a_abc1"'
     assert.deepEqual compiled.params, [5]
+
+  it 'compiles query with subexpression', ->
+    subexpr = { 
+      type: "op"
+      op: "json_array_elements"
+      exprs: [
+        { type: "literal", value: [{ a: 1 }, { a: 2 }] }
+      ]
+    }
+
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "field", tableAlias: "abc1" }, alias: "x" }
+      ]
+      from: { type: "subexpr", expr: subexpr, alias: "abc1" }
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select a_abc1 as "x" from (json_array_elements(?)) as "a_abc1"'
+    assert.deepEqual compiled.params, [[{ a: 1 }, { a: 2 }]]
 
   it 'compiles query with withs', ->
     withQuery = { 
@@ -208,7 +229,7 @@ describe "JsonqlCompiler", ->
     }
 
     compiled = @compiler.compileQuery(query)
-    assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select a_abc1.q as "x" from a_wq as "a_abc1"'
+    assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select a_abc1."q" as "x" from a_wq as "a_abc1"'
     assert.deepEqual compiled.params, [5]
 
   it 'check that with columns exist', ->

@@ -19,7 +19,7 @@ Literal value. Has:
 
 Top level. Has
  selects: [select]
- from: join or table or subquery
+ from: join or table or subquery or subexpression
  where: boolean expression (optional)
  groupBy: array of ordinals (1 based) or expressions (optional)  
  orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) } (optional)
@@ -73,6 +73,8 @@ References a field of an aliased table
 	column: column of field
 }
 
+column can be null/undefined to reference the entire row.
+
 ### table
 
 Single table, aliased. table can also refer to a CTE made by withs using its alias.
@@ -93,9 +95,15 @@ Join of two tables or joins.
 
 ### subquery
 
-query, aliased.
+query aliased.
 
-`{ type: "subquery", query: subquery, alias: somealias }`
+`{ type: "subquery", query: subquery query, alias: somealias }`
+
+### subexpr
+
+Subexpression is a from that is an expression, as in select * from someexpression as somealias
+
+`{ type: "subquery", expr: subquery expression, alias: somealias }`
 
 ### token
 
