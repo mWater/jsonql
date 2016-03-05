@@ -324,6 +324,8 @@ module.exports = class JsonqlCompiler
       "jsonb_array_elements_text"
       "array_to_string"
       "array_agg"
+      "lower"
+      "upper"
     ]
 
     switch expr.op
