@@ -315,6 +315,9 @@ module.exports = class JsonqlCompiler
       "coalesce"
       "to_json"
       "convert_to_decimal"  # Custom function used for safely converting to decimal
+      "json_build_array"
+      "json_build_object"
+      "json_object"
       "json_array_elements"
       "jsonb_array_elements"
       "json_array_elements_text"
