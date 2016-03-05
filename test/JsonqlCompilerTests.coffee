@@ -232,28 +232,29 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select a_abc1."q" as "x" from a_wq as "a_abc1"'
     assert.deepEqual compiled.params, [5]
 
-  it 'check that with columns exist', ->
-    withQuery = { 
-      type: "query"
-      selects: [
-        { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
-      ]
-      from: { type: "table", table: "xyz", alias: "xyz1" }
-    }
+  # Not longer check this as subtables can have indeterminate columns
+  # it 'check that with columns exist', ->
+  #   withQuery = { 
+  #     type: "query"
+  #     selects: [
+  #       { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
+  #     ]
+  #     from: { type: "table", table: "xyz", alias: "xyz1" }
+  #   }
 
-    query = { 
-      type: "query"
-      selects: [
-        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "xyzzy" }, alias: "x" }
-      ]
-      from: { type: "table", table: "wq", alias: "abc1" }
-      withs: [
-        { query: withQuery, alias: "wq" }
-      ]
-    }
+  #   query = { 
+  #     type: "query"
+  #     selects: [
+  #       { type: "select", expr: { type: "field", tableAlias: "abc1", column: "xyzzy" }, alias: "x" }
+  #     ]
+  #     from: { type: "table", table: "wq", alias: "abc1" }
+  #     withs: [
+  #       { query: withQuery, alias: "wq" }
+  #     ]
+  #   }
 
-    assert.throws () =>
-      compiled = @compiler.compileQuery(query)
+  #   assert.throws () =>
+  #     compiled = @compiler.compileQuery(query)
 
   it 'validates select aliases', ->
     assert.throws () =>
@@ -412,6 +413,9 @@ describe "JsonqlCompiler", ->
 
       it 'is not null', ->
         @testExpr({ type: "op", op: "is not null", exprs: [@a] }, "(? is not null)", [1])
+
+      it 'in', ->
+        @testExpr({ type: "op", op: "in", exprs: [@a, @b] }, "(? in ?)", [1, 2])
 
       it '+ - *', ->
         @testExpr({ type: "op", op: "+", exprs: [@a, @b] }, "(? + ?)", [1, 2])
