@@ -322,6 +322,8 @@ module.exports = class JsonqlCompiler
       "jsonb_array_elements"
       "json_array_elements_text"
       "jsonb_array_elements_text"
+      "json_typeof"
+      "jsonb_typeof"
       "array_to_string"
       "array_agg"
       "lower"

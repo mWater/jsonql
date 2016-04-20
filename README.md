@@ -13,7 +13,7 @@ Everything is a json object: { type: type of object, ... }. Expressions can be l
 
 Literal value. Has:
   type: "literal"
-  value: some value (e.g. 5, "apple", etc.)
+  value: some value (e.g. 5, "apple", etc.). Can be null for a null.
 
 ### query
 
