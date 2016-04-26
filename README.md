@@ -61,7 +61,12 @@ over: { partitionBy: [ list of expressions ], orderBy: [ list of { expr: express
 
 ### scalar 
 
-Scalar subquery. Has { expr: expr, where: boolean expression, from: join or table, order: expr, limit: integer }
+Scalar subquery. Has:
+ expr: expr
+ where: boolean expression
+ from: join or table
+ orderBy: optional array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) }
+ limit: integer (optional)
 
 ### field
 

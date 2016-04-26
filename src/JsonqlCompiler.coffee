@@ -328,6 +328,9 @@ module.exports = class JsonqlCompiler
       "array_agg"
       "lower"
       "upper"
+      "round"
+      "ceiling"
+      "floor"
     ]
 
     switch expr.op

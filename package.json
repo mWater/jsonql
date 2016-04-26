@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "browserify": "^10.2.4",
+    "canonical-json": "0.0.4",
     "chai": "^2.0.0",
     "coffee-script": "^1.9.3",
     "coffeeify": "^1.1.0",
