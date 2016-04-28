@@ -80,6 +80,28 @@ module.exports = class QueryOptimizer
     if outerWhere.exprs.length == 0
       outerWhere = null
 
+    # Remaps over clause in select
+    remapOver = (over, alias) =>
+      if not over
+        return over
+
+      return _.omit({
+        partitionBy: if over.partitionBy then _.map(over.partitionBy, (pb) => @remapFields(pb, fields, scalar, alias))
+        orderBy: if over.orderBy then _.map(over.orderBy, (ob) => _.extend({}, ob, { expr: @remapFields(ob.expr, fields, scalar, alias) }))
+        }, _.isUndefined)
+
+    # Remaps selects for outer query, mapping fields in expr and over clauses
+    remapSelects = (selects, alias) =>
+      # Re-write query selects to use new opt0 query
+      return _.map selects, (select) =>
+        # Get rid of undefined values
+        _.omit({
+          type: "select"
+          expr: @remapFields(select.expr, fields, scalar, alias)
+          over: remapOver(select.over, alias)
+          alias: select.alias
+        }, _.isUndefined)
+      
     # If simple non-aggregate
     if not @isAggr(scalar.expr) and not scalar.limit
       # Create new selects for opt0 query with all fields + scalar expression
@@ -104,13 +126,7 @@ module.exports = class QueryOptimizer
 
       outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt0 query
-        selects: _.map(query.selects, (select) =>
-          {
-            type: "select"
-            expr: @remapFields(select.expr, fields, scalar, "opt0")
-            alias: select.alias
-          }
-        )
+        selects: remapSelects(query.selects, "opt0")
         from: {
           type: "subquery"
           query: opt0Query
@@ -162,13 +178,7 @@ module.exports = class QueryOptimizer
 
       outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt1 query
-        selects: _.map(query.selects, (select) =>
-          {
-            type: "select"
-            expr: @remapFields(select.expr, fields, scalar, "opt1")
-            alias: select.alias
-          }
-        )
+        selects: remapSelects(query.selects, "opt1")
         from: {
           type: "subquery"
           query: opt1Query
@@ -248,13 +258,7 @@ module.exports = class QueryOptimizer
       # Wrap in final query
       outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt1 query
-        selects: _.map(query.selects, (select) =>
-          {
-            type: "select"
-            expr: @remapFields(select.expr, fields, scalar, "opt2")
-            alias: select.alias
-          }
-        )
+        selects: remapSelects(query.selects, "opt2")
         from: {
           type: "subquery"
           query: opt2Query
