@@ -333,6 +333,8 @@ module.exports = class QueryOptimizer
         return @extractFields(frag.frag).concat(@extractFields(frag.where)).concat(_.map(frag.orderBy, (ob) => @extractFields(ob.frag)))
       when "literal"
         return []
+      when "token"
+        return []
       else
         throw new Error("Unsupported extractFields with type #{frag.type}")
 
@@ -351,6 +353,8 @@ module.exports = class QueryOptimizer
       when "scalar"
         return false
       when "literal"
+        return false
+      when "token"
         return false
       else
         throw new Error("Unsupported isAggr with type #{expr.type}")
@@ -399,6 +403,8 @@ module.exports = class QueryOptimizer
           on: @remapFields(frag.on, fields, scalar, tableAlias)
         })
       when "literal"
+        return frag
+      when "token"
         return frag
       else
         throw new Error("Unsupported remapFields with type #{frag.type}")
