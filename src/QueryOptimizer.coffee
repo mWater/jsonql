@@ -3,18 +3,41 @@ _ = require 'lodash'
 
 Scalar subqueries can be very slow in Postgresql as they are not re-written but instead loop over and over.
 
-This attempts to re-write them as left outer joins, which is a complex tranformation
+This attempts to re-write them as left outer joins, which is a complex tranformation.
 
+There are three cases: 
+
+1) non-aggregated subquery. These are just a left outer join in an inner query
+
+2) aggregated subquery. These are sum(some value), etc as the thing being selected in the scalar
+
+3) limit 1 subquery. These are taking the *latest* of some value, for example, and have an order by and limit 1
+
+When the scalar is in the where clause, the where clause is processed first, splitting into "ands" and putting 
+as much as possible in the inner query for speed.
+
+We need to do trickery with row_number to give the wrapping queries something to group on or partition by.
+
+We re-write wheres first, followed by selects, followed by order bys.
+
+See the tests for examples of all three re-writings. The speed difference is 1000x plus depending on the # of rows.
 
 ###
 
-
 module.exports = class QueryOptimizer
+  # Run rewriteScalar query repeatedly until no more changes
   optimizeQuery: (query) ->
-    # Do not use if having clause
-    if query.having
-      return query
+    for i in [0...20]
+      optQuery = @rewriteScalar(query)
 
+      if optQuery == query
+        return optQuery
+
+      query = optQuery
+
+    throw new Error("Unable to optimize query (infinite loop): #{JSON.stringify(query)}")
+
+  rewriteScalar: (query) ->
     # Find scalar to optimize
     scalar = @findScalar(query)
 
@@ -29,6 +52,33 @@ module.exports = class QueryOptimizer
 
     # Filter fields to ones that reference from clause
     fields = _.filter(fields, (f) -> f.tableAlias in fromAliases)
+
+    # Unique fields
+    fields = _.uniq(fields, (f) -> "#{f.tableAlias}::#{f.column}")
+
+    # Split where into ands
+    wheres = []
+    if query.where and query.where.type == "op" and query.where.op == "and"
+      wheres = query.where.exprs
+    else if query.where
+      # Single expression
+      wheres = [query.where]
+
+    # Split inner where (not containing the scalar) and outer wheres (containing the scalar)
+    innerWhere = { type: "op", op: "and", exprs: _.filter(wheres, (where) =>
+      @findScalar(where) != scalar
+      ) }
+
+    outerWhere = { type: "op", op: "and", exprs: _.filter(wheres, (where) =>
+      @findScalar(where) == scalar
+      ) }
+
+    # Null if empty
+    if innerWhere.exprs.length == 0
+      innerWhere = null
+
+    if outerWhere.exprs.length == 0
+      outerWhere = null
 
     # If simple non-aggregate
     if not @isAggr(scalar.expr) and not scalar.limit
@@ -46,11 +96,13 @@ module.exports = class QueryOptimizer
         type: "query"
         selects: opt0Selects
         from: opt0From
-        where: query.where  # TODO where is completely in opt0 query
+        where: innerWhere
       }
 
-      outerQuery = {
-        type: "query"
+      # Optimize inner query (TODO give each unique name?)
+      opt0Query = @optimizeQuery(opt0Query)
+
+      outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt0 query
         selects: _.map(query.selects, (select) =>
           {
@@ -64,12 +116,13 @@ module.exports = class QueryOptimizer
           query: opt0Query
           alias: "opt0"
         }
+        where: @remapFields(outerWhere, fields, scalar, "opt0")
         orderBy: _.map(query.orderBy, (orderBy) =>
           if not orderBy.expr
             return orderBy
           return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, "opt0") })
         )
-      }
+      })
       return outerQuery
 
     else if not scalar.limit
@@ -84,8 +137,11 @@ module.exports = class QueryOptimizer
         type: "query"
         selects: opt0Selects
         from: query.from
-        where: query.where  # TODO where is completely in opt0 query
+        where: innerWhere
       }
+
+      # Optimize inner query (TODO give each unique name?)
+      opt0Query = @optimizeQuery(opt0Query)
 
       # Create new selects for opt1 query with row number + all fields + scalar expression
       opt1Selects = [{ type: "select", expr: { type: "field", tableAlias: "opt0", column: "rn" }, alias: "rn" }]
@@ -104,8 +160,7 @@ module.exports = class QueryOptimizer
         groupBy: _.range(1, fields.length + 2)
       }
 
-      outerQuery = {
-        type: "query"
+      outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt1 query
         selects: _.map(query.selects, (select) =>
           {
@@ -119,12 +174,13 @@ module.exports = class QueryOptimizer
           query: opt1Query
           alias: "opt1"
         }
+        where: @remapFields(outerWhere, fields, scalar, "opt1")
         orderBy: _.map(query.orderBy, (orderBy) =>
           if not orderBy.expr
             return orderBy
           return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, "opt1") })
         )
-      }
+      })
 
       return outerQuery
 
@@ -141,8 +197,11 @@ module.exports = class QueryOptimizer
         type: "query"
         selects: opt0Selects
         from: query.from
-        where: query.where  # TODO where is completely in opt0 query
+        where: innerWhere
       }
+
+      # Optimize inner query (TODO give each unique name?)
+      opt0Query = @optimizeQuery(opt0Query)
 
       # Create new selects for opt1 query with all fields + scalar expression + ordered row number over inner row number
       opt1Selects = _.map(fields, (field) =>
@@ -187,8 +246,7 @@ module.exports = class QueryOptimizer
       }
 
       # Wrap in final query
-      outerQuery = {
-        type: "query"
+      outerQuery = _.extend({}, query, {
         # Re-write query selects to use new opt1 query
         selects: _.map(query.selects, (select) =>
           {
@@ -202,22 +260,15 @@ module.exports = class QueryOptimizer
           query: opt2Query
           alias: "opt2"
         }
+        where: @remapFields(outerWhere, fields, scalar, "opt2")
         orderBy: _.map(query.orderBy, (orderBy) =>
           if not orderBy.expr
             return orderBy
           return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, "opt2") })
         )
-      }
+      })
 
       return outerQuery
-
-
-
-
-
-    # TODO put as much of where clause in inner query but not scalars 
-
-
 
   # Find a scalar in where, selects or order by or expression
   findScalar: (frag) ->
@@ -305,36 +356,50 @@ module.exports = class QueryOptimizer
         throw new Error("Unsupported isAggr with type #{expr.type}")
 
   # Remap fields a.b1 to format <tableAlias>.opt_a_b1
-  remapFields: (expr, fields, scalar, tableAlias) ->
-    if not expr or not expr.type
-      return expr
+  remapFields: (frag, fields, scalar, tableAlias) ->
+    if not frag or not frag.type
+      return frag
 
-    switch expr.type
+    switch frag.type
       when "field"
         for field in fields
           # Remap
-          if field == expr
+          if field.tableAlias == frag.tableAlias and field.column == frag.column
             return { type: "field", tableAlias: tableAlias, column: "opt_#{field.tableAlias}_#{field.column}" }
-        return expr
+        return frag
       when "op"
-        return _.extend({}, expr, exprs: _.map(expr.exprs, (ex) => @remapFields(ex, fields, scalar, tableAlias)))
+        return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @remapFields(ex, fields, scalar, tableAlias)))
       when "case"
-        return _.extend({}, expr, {
-          input: @remapFields(expr.input, fields, scalar, tableAlias)
-          cases: _.map(expr.cases, (cs) =>
+        return _.extend({}, frag, {
+          input: @remapFields(frag.input, fields, scalar, tableAlias)
+          cases: _.map(frag.cases, (cs) =>
             {
               when: @remapFields(cs.when, fields, scalar, tableAlias)
               then: @remapFields(cs.then, fields, scalar, tableAlias)
             }
           )
-          else: @remapFields(expr.else, fields, scalar, tableAlias)
+          else: @remapFields(frag.else, fields, scalar, tableAlias)
         })
       when "scalar"
-        if scalar == expr
+        if scalar == frag
           return { type: "field", tableAlias: tableAlias, column: "expr" }
-        return expr
+        else 
+          return _.extend({}, frag, {
+            frag: @remapFields(frag.frag, fields, scalar, tableAlias)
+            from: @remapFields(frag.from, fields, scalar, tableAlias)
+            where: @remapFields(frag.where, fields, scalar, tableAlias)
+            orderBy: @remapFields(frag.orderBy, fields, scalar, tableAlias)
+          })
+      when "table"
+        return frag
+      when "join"
+        return _.extend({}, frag, {
+          left: @remapFields(frag.left, fields, scalar, tableAlias)
+          right: @remapFields(frag.right, fields, scalar, tableAlias)
+          on: @remapFields(frag.on, fields, scalar, tableAlias)
+        })
       when "literal"
-        return expr
+        return frag
       else
-        throw new Error("Unsupported remapFields with type #{expr.type}")
+        throw new Error("Unsupported remapFields with type #{frag.type}")
 

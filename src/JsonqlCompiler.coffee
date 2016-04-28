@@ -1,11 +1,14 @@
 _ = require 'lodash'
 SqlFragment = require './SqlFragment'
+QueryOptimizer = require './QueryOptimizer'
 
 # Compiles jsonql to sql
 module.exports = class JsonqlCompiler 
-  constructor: (schemaMap) ->
+  constructor: (schemaMap, optimizeQueries = true) ->
     @schemaMap = schemaMap
     @nextId = 1
+
+    @optimizeQueries = optimizeQueries
 
   # Compile a query made up of selects, from, where, order, limit, skip
   # `aliases` are aliases to tables which have a particular row already selected
@@ -13,6 +16,10 @@ module.exports = class JsonqlCompiler
   # expression, so it already has a row selected.
   # ctes are aliases for common table expressions. They are a map of alias to true
   compileQuery: (query, aliases = {}, ctes = {}) ->
+    # Optimize query first
+    if @optimizeQueries
+      query = new QueryOptimizer().optimizeQuery(query)
+
     frag = new SqlFragment()
 
     # Make a copy for use internally
@@ -218,7 +225,7 @@ module.exports = class JsonqlCompiler
           .append('"')
 
       else
-        throw new Error("Unsupported type #{from.type}")
+        throw new Error("Unsupported type #{from.type} in #{JSON.stringify(from)}")
 
   compileOrderBy: (orderBy, aliases) ->
     frag = new SqlFragment()
@@ -290,7 +297,7 @@ module.exports = class JsonqlCompiler
       when "case"
         return @compileCaseExpr(expr, aliases)
       else
-        throw new Error("Unsupported type #{expr.type}")
+        throw new Error("Unsupported type #{expr.type} in #{JSON.stringify(expr)}")
 
   # Compiles an op expression
   compileOpExpr: (expr, aliases) ->
