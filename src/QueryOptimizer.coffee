@@ -276,7 +276,7 @@ module.exports = class QueryOptimizer
 
   # Find a scalar in where, selects or order by or expression
   findScalar: (frag) ->
-    if not frag
+    if not frag or not frag.type
       return null
 
     switch frag.type
