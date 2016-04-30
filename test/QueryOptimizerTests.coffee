@@ -49,14 +49,14 @@ describe "QueryOptimizer", ->
 
     should be optimized to:
     
-    select opt0.opt_a_a1 as s1, opt0.expr as s2
+    select opt1.opt_a_a1 as s1, opt1.expr as s2
     from
-    ****** First query opt0 that does left outer join
+    ****** First query opt1 that does left outer join
     (
       select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, b.b1 as expr from a as a
       left outer join b as b on b.b2 = a.a2
-    ) as opt0
-    order by opt0.opt_a_a3
+    ) as opt1
+    order by opt1.opt_a_a3
 
     ###
     input = {
@@ -81,8 +81,8 @@ describe "QueryOptimizer", ->
     output = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a1" }, alias: "s1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "expr" }, alias: "s2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "s2" }
       ]
       from: {
         type: "subquery"
@@ -92,21 +92,21 @@ describe "QueryOptimizer", ->
             { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
             { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
             { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
-            { type: "select", expr: { type: "field", tableAlias: "b", column: "b1" }, alias: "expr" }
+            { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
           ]
           from: { 
             type: "join"
             kind: "left"
             left: { type: "table", table: "a", alias: "a" }
-            right: { type: "table", table: "b", alias: "b" }
-            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
+            right: { type: "table", table: "b", alias: "opt0" }
+            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
           }
           where: null
         }
-        alias: "opt0"
+        alias: "opt1"
       }
       where: null
-      orderBy: [{ expr: { type: "field", tableAlias: "opt0", column: "opt_a_a3" }}]
+      orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
     }
 
     compare @opt.rewriteScalar(input), output
@@ -119,21 +119,21 @@ describe "QueryOptimizer", ->
 
     should be optimized to:
     
-    select opt1.opt_a_a1 as s1, opt1.expr as s2
+    select opt2.opt_a_a1 as s1, opt2.expr as s2
     from
-    ****** Second query opt1 that does left outer join 
+    ****** Second query opt2 that does left outer join 
     (
-      select opt0.rn as rn, opt0.opt_a_a1 as opt_a_a1, opt0.opt_a_a2 as opt_a_a2, opt0.opt_a_a3 as opt_a_a3, sum(b.b1) as expr
+      select opt1.rn as rn, opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, sum(b.b1) as expr
       from 
-      ****** First query opt0 that adds row number 
+      ****** First query opt1 that adds row number 
       (
         select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, row_number() over () as rn from a as a
-      ) as opt0
-      left outer join b as b on b.b2 = opt0.opt_a_a2
+      ) as opt1
+      left outer join b as b on b.b2 = opt1.opt_a_a2
       ****** group by all fields except expr 
       group by 1, 2, 3, 4
-    ) as opt1
-    order by opt1.opt_a_a3
+    ) as opt2
+    order by opt2.opt_a_a3
 
     ###
     input = {
@@ -170,33 +170,33 @@ describe "QueryOptimizer", ->
     output = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "s2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "expr" }, alias: "s2" }
       ]
       from: {
         type: "subquery"
         query: {
           type: "query"
           selects: [
-            { type: "select", expr: { type: "field", tableAlias: "opt0", column: "rn" }, alias: "rn" }
-            { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a1" }, alias: "opt_a_a1" }
-            { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a2" }, alias: "opt_a_a2" }
-            { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a3" }, alias: "opt_a_a3" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
             { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }, alias: "expr" }
           ]
           from: { 
             type: "join"
             kind: "left"
-            left: { type: "subquery", query: inner0Query, alias: "opt0" }
+            left: { type: "subquery", query: inner0Query, alias: "opt1" }
             right: { type: "table", table: "b", alias: "b" }
-            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt0", column: "opt_a_a2" }] }
+            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
           }
           groupBy: [1, 2, 3, 4]
         }
-        alias: "opt1"
+        alias: "opt2"
       }
       where: null
-      orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
+      orderBy: [{ expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }}]
     }
 
     # console.log JSON.stringify(output, null, 2)
@@ -210,25 +210,25 @@ describe "QueryOptimizer", ->
 
     should be optimized to:
     
-    select opt2.opt_a_a1 as s1, opt2.expr as s2
+    select opt3.opt_a_a1 as s1, opt3.expr as s2
     from
-    ****** Third query opt2 that removes all but top row of window 
+    ****** Third query opt3 that removes all but top row of window 
     (
-      select opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, expr as expr
+      select opt2.opt_a_a1 as opt_a_a1, opt2.opt_a_a2 as opt_a_a2, opt2.opt_a_a3 as opt_a_a3, expr as expr
       from 
-      ****** Second query opt1 that does left outer join and adds row number 
+      ****** Second query opt2 that does left outer join and adds row number 
       (
-        select opt0.opt_a_a1 as opt_a_a1, opt0.opt_a_a2 as opt_a_a2, opt0.opt_a_a3 as opt_a_a3, b.b1 as expr, row_number() over (partition by opt0.rn order by b.b3) as rn
+        select opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, b.b1 as expr, row_number() over (partition by opt1.rn order by b.b3) as rn
         from 
-        ****** First query opt0 that adds row number 
+        ****** First query opt1 that adds row number 
         (
           select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, row_number() over () as rn from a as a
-        ) as opt0
-        left outer join b as b on b.b2 = opt0.opt_a_a2
-      ) as opt1
-      where opt1.rn = 1
-    ) as opt2
-    order by opt2.opt_a_a3
+        ) as opt1
+        left outer join b as b on b.b2 = opt1.opt_a_a2
+      ) as opt2
+      where opt2.rn = 1
+    ) as opt3
+    order by opt3.opt_a_a3
 
     ###
     input = {
@@ -267,38 +267,38 @@ describe "QueryOptimizer", ->
     inner1Query = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
         { type: "select", expr: { type: "field", tableAlias: "b", column: "b1" }, alias: "expr" }
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: { 
-          partitionBy: [{ type: "field", tableAlias: "opt0", column: "rn" }]
+          partitionBy: [{ type: "field", tableAlias: "opt1", column: "rn" }]
           orderBy: [{ expr: { type: "field", tableAlias: "b", column: "b3" }, direction: "asc" }]
         }, alias: "rn" }
       ]
       from: { 
         type: "join"
         kind: "left"
-        left: { type: "subquery", query: inner0Query, alias: "opt0" }
+        left: { type: "subquery", query: inner0Query, alias: "opt1" }
         right: { type: "table", table: "b", alias: "b" }
-        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt0", column: "opt_a_a2" }] }
+        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
       }
     }
 
     inner2Query = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "expr" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "opt_a_a1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a2" }, alias: "opt_a_a2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "expr" }, alias: "expr" }
       ]
-      from: { type: "subquery", query: inner1Query, alias: "opt1" }
+      from: { type: "subquery", query: inner1Query, alias: "opt2" }
       where: {
         type: "op"
         op: "="
         exprs: [
-          { type: "field", tableAlias: "opt1", column: "rn" }
+          { type: "field", tableAlias: "opt2", column: "rn" }
           { type: "literal", value: 1 }
         ]
       }
@@ -307,16 +307,16 @@ describe "QueryOptimizer", ->
     output = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "expr" }, alias: "s2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt3", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt3", column: "expr" }, alias: "s2" }
       ]
       from: {
         type: "subquery"
         query: inner2Query
-        alias: "opt2"
+        alias: "opt3"
       }
       where: null
-      orderBy: [{ expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }}]
+      orderBy: [{ expr: { type: "field", tableAlias: "opt3", column: "opt_a_a3" }}]
     }
 
     compare @opt.rewriteScalar(input), output
@@ -330,24 +330,24 @@ describe "QueryOptimizer", ->
 
     should be optimized to (after one pass): 
     
-    select opt1.opt_a_a1 as s1, (select sum(b.b1) from b as b where b.b2 = opt1.a_a2) as s2
+    select opt2.opt_a_a1 as s1, (select sum(b.b1) from b as b where b.b2 = opt2.a_a2) as s2
     from
-    ****** Second query opt1 that does left outer join 
+    ****** Second query opt2 that does left outer join 
     (
-      select opt0.rn as rn, opt0.opt_a_a1 as opt_a_a1, opt0.opt_a_a2 as opt_a_a2, opt0.opt_a_a3 as opt_a_a3, sum(c.c1) as expr
+      select opt1.rn as rn, opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, sum(c.c1) as expr
       from 
-      ****** First query opt0 that adds row number and does eligible wheres
+      ****** First query opt1 that adds row number and does eligible wheres
       (
         select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, a.a4 as opt_a_a4, row_number() over () as rn 
         from a as a
         where a.a5 = 3
-      ) as opt0
-      left outer join c as c on c.c2 = opt0.opt_a_a4
+      ) as opt1
+      left outer join c as c on c.c2 = opt1.opt_a_a4
       ****** group by all fields except expr 
       group by 1, 2, 3, 4
-    ) as opt1
-    where opt1.expr = 2
-    order by opt1.opt_a_a3
+    ) as opt2
+    where opt2.expr = 2
+    order by opt2.opt_a_a3
 
     ###
     input = {
@@ -408,20 +408,20 @@ describe "QueryOptimizer", ->
     inner1Query = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "rn" }, alias: "rn" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a4" }, alias: "opt_a_a4" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a5" }, alias: "opt_a_a5" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "opt_a_a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a4" }, alias: "opt_a_a4" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a5" }, alias: "opt_a_a5" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
         { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "c", column: "c1" }] }, alias: "expr" }
       ]
       from: { 
         type: "join"
         kind: "left"
-        left: { type: "subquery", query: inner0Query, alias: "opt0" }
+        left: { type: "subquery", query: inner0Query, alias: "opt1" }
         right: { type: "table", table: "c", alias: "c" }
-        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "c", column: "c2" }, { type: "field", tableAlias: "opt0", column: "opt_a_a4" }] }
+        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "c", column: "c2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a4" }] }
       }
       groupBy: [1, 2, 3, 4, 5, 6]
     }
@@ -429,14 +429,14 @@ describe "QueryOptimizer", ->
     output = {
       type: "query"
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" }
         { 
           type: "select"
           expr: { 
             type: "scalar"
             expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }
             from: { type: "table", table: "b", alias: "b" }
-            where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
+            where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt2", column: "opt_a_a2" }] }
           }
           alias: "s2" 
         }
@@ -444,21 +444,110 @@ describe "QueryOptimizer", ->
       from: {
         type: "subquery"
         query: inner1Query
-        alias: "opt1"
+        alias: "opt2"
       }
       where: {
         type: "op"
         op: "and"
         exprs: [
           { type: "op", op: "=", exprs: [
-            { type: "field", tableAlias: "opt1", column: "expr" }
+            { type: "field", tableAlias: "opt2", column: "expr" }
             { type: "literal", value: 2 }        
           ]}
         ]
       }
-      orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
+      orderBy: [{ expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }}]
     }
 
     # console.log JSON.stringify(output, null, 2)
     compare @opt.rewriteScalar(input), output
 
+  it 'optimizes inner query simple non-aggr select', ->
+    ###
+    select x.s1 as x1 from (
+      select a.a1 as s1, (select b.b1 from b as b where b.b2 = a.a2) as s2
+      from a as a
+      order by a.a3
+    ) as x
+
+    should be optimized to:
+    
+    select x.s1 as x1 from (
+      select opt1.opt_a_a1 as s1, opt1.expr as s2
+      from
+      ****** First query opt1 that does left outer join
+      (
+        select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, b.b1 as expr from a as a
+        left outer join b as b on b.b2 = a.a2
+      ) as opt1
+      order by opt1.opt_a_a3
+    ) as x
+
+    ###
+    input = {
+      type: "query"
+      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }]
+      from: {
+        type: "subquery"
+        query: {
+          type: "query"
+          selects: [
+            { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+            { 
+              type: "select"
+              expr: { 
+                type: "scalar"
+                expr: { type: "field", tableAlias: "b", column: "b1" }
+                from: { type: "table", table: "b", alias: "b" }
+                where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
+              }
+              alias: "s2" 
+            }
+          ]
+          from: { type: "table", table: "a", alias: "a" }
+          orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
+        }
+        alias: "x"
+      }
+    }
+
+    output = {
+      type: "query"
+      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }]
+      from: {
+        type: "subquery"
+        query: {
+          type: "query"
+          selects: [
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "s2" }
+          ]
+          from: {
+            type: "subquery"
+            query: {
+              type: "query"
+              selects: [
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+                { type: "select", expr: { type: "field", tableAlias: "b", column: "b1" }, alias: "expr" }
+              ]
+              from: { 
+                type: "join"
+                kind: "left"
+                left: { type: "table", table: "a", alias: "a" }
+                right: { type: "table", table: "b", alias: "b" }
+                on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
+              }
+              where: null
+            }
+            alias: "opt1"
+          }
+          where: null
+          orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
+        }
+        alias: "x"
+      }
+    }
+
+    compare @opt.rewriteScalar(input), output
