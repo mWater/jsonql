@@ -25,17 +25,40 @@ See the tests for examples of all three re-writings. The speed difference is 100
 ###
 
 module.exports = class QueryOptimizer
+
   constructor: ->
     # Next table alias number
     @aliasNum = 0
 
+  debugQuery: (query) ->
+    SchemaMap = require './SchemaMap'
+    JsonqlCompiler = require './JsonqlCompiler'
+
+    try
+      sql = new JsonqlCompiler(new SchemaMap(), false).compileQuery(query)
+      console.log "===== SQL ======"
+      console.log sql.toInline()
+      console.log "================"
+    catch ex
+      console.trace("Failure?")
+      console.log "FAILURE: " + ex.message
+      console.log JSON.stringify(query, null, 2)
+
   # Run rewriteScalar query repeatedly until no more changes
-  optimizeQuery: (query) ->
+  optimizeQuery: (query, debug = true) ->
+    if debug
+      console.log "================== BEFORE OPT ================"
+      @debugQuery(query)
+
     for i in [0...20]
       optQuery = @rewriteScalar(query)
 
       if _.isEqual(optQuery, query)
         return optQuery
+
+      if debug
+        console.log "================== OPT #{i} ================"
+        @debugQuery(optQuery)
 
       query = optQuery
 
@@ -143,7 +166,7 @@ module.exports = class QueryOptimizer
       }
 
       # Optimize inner query
-      opt1Query = @optimizeQuery(opt1Query)
+      opt1Query = @optimizeQuery(opt1Query, false)
 
       # Create alias for opt1 query
       opt1Alias = @createAlias()
@@ -184,7 +207,7 @@ module.exports = class QueryOptimizer
       }
 
       # Optimize inner query
-      opt1Query = @optimizeQuery(opt1Query)
+      opt1Query = @optimizeQuery(opt1Query, false)
 
       # Create new selects for opt2 query with row number + all fields + scalar expression
       opt2Selects = [{ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "rn" }, alias: "rn" }]
@@ -247,7 +270,7 @@ module.exports = class QueryOptimizer
       }
 
       # Optimize inner query (TODO give each unique name?)
-      opt1Query = @optimizeQuery(opt1Query)
+      opt1Query = @optimizeQuery(opt1Query, false)
 
       # Create alias for opt1 query
       opt1Alias = @createAlias()
@@ -350,7 +373,7 @@ module.exports = class QueryOptimizer
 
   # Find a scalar in where, selects or order by or expression
   findScalar: (frag) ->
-    if not frag
+    if not frag or not frag.type
       return null
 
     switch frag.type
