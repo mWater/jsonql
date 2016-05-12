@@ -53,8 +53,8 @@ describe "QueryOptimizer", ->
     from
     ****** First query opt1 that does left outer join
     (
-      select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, b.b1 as expr from a as a
-      left outer join b as b on b.b2 = a.a2
+      select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, opt0.b1 as expr from a as a
+      left outer join b as opt0 on opt0.b2 = a.a2
     ) as opt1
     order by opt1.opt_a_a3
 
@@ -123,13 +123,13 @@ describe "QueryOptimizer", ->
     from
     ****** Second query opt2 that does left outer join 
     (
-      select opt1.rn as rn, opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, sum(b.b1) as expr
+      select opt1.rn as rn, opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, sum(opt1.b1) as expr
       from 
       ****** First query opt1 that adds row number 
       (
         select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, row_number() over () as rn from a as a
       ) as opt1
-      left outer join b as b on b.b2 = opt1.opt_a_a2
+      left outer join b as opt0 on opt0.b2 = opt1.opt_a_a2
       ****** group by all fields except expr 
       group by 1, 2, 3, 4
     ) as opt2
@@ -182,14 +182,14 @@ describe "QueryOptimizer", ->
             { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
             { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
             { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
-            { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }, alias: "expr" }
+            { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "opt0", column: "b1" }] }, alias: "expr" }
           ]
           from: { 
             type: "join"
             kind: "left"
             left: { type: "subquery", query: inner0Query, alias: "opt1" }
-            right: { type: "table", table: "b", alias: "b" }
-            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
+            right: { type: "table", table: "b", alias: "opt0" }
+            on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
           }
           groupBy: [1, 2, 3, 4]
         }
@@ -218,13 +218,13 @@ describe "QueryOptimizer", ->
       from 
       ****** Second query opt2 that does left outer join and adds row number 
       (
-        select opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, b.b1 as expr, row_number() over (partition by opt1.rn order by b.b3) as rn
+        select opt1.opt_a_a1 as opt_a_a1, opt1.opt_a_a2 as opt_a_a2, opt1.opt_a_a3 as opt_a_a3, opt0.b1 as expr, row_number() over (partition by opt1.rn order by opt0.b3) as rn
         from 
         ****** First query opt1 that adds row number 
         (
           select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, row_number() over () as rn from a as a
         ) as opt1
-        left outer join b as b on b.b2 = opt1.opt_a_a2
+        left outer join b as opt0 on opt0.b2 = opt1.opt_a_a2
       ) as opt2
       where opt2.rn = 1
     ) as opt3
@@ -270,18 +270,18 @@ describe "QueryOptimizer", ->
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
-        { type: "select", expr: { type: "field", tableAlias: "b", column: "b1" }, alias: "expr" }
+        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: { 
           partitionBy: [{ type: "field", tableAlias: "opt1", column: "rn" }]
-          orderBy: [{ expr: { type: "field", tableAlias: "b", column: "b3" }, direction: "asc" }]
+          orderBy: [{ expr: { type: "field", tableAlias: "opt0", column: "b3" }, direction: "asc" }]
         }, alias: "rn" }
       ]
       from: { 
         type: "join"
         kind: "left"
         left: { type: "subquery", query: inner0Query, alias: "opt1" }
-        right: { type: "table", table: "b", alias: "b" }
-        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
+        right: { type: "table", table: "b", alias: "opt0" }
+        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
       }
     }
 
@@ -414,14 +414,14 @@ describe "QueryOptimizer", ->
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a4" }, alias: "opt_a_a4" }
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a5" }, alias: "opt_a_a5" }
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
-        { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "c", column: "c1" }] }, alias: "expr" }
+        { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "opt0", column: "c1" }] }, alias: "expr" }
       ]
       from: { 
         type: "join"
         kind: "left"
         left: { type: "subquery", query: inner0Query, alias: "opt1" }
-        right: { type: "table", table: "c", alias: "c" }
-        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "c", column: "c2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a4" }] }
+        right: { type: "table", table: "c", alias: "opt0" }
+        on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "c2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a4" }] }
       }
       groupBy: [1, 2, 3, 4, 5, 6]
     }
@@ -477,8 +477,8 @@ describe "QueryOptimizer", ->
       from
       ****** First query opt1 that does left outer join
       (
-        select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, b.b1 as expr from a as a
-        left outer join b as b on b.b2 = a.a2
+        select a.a1 as opt_a_a1, a.a2 as opt_a_a2, a.a3 as opt_a_a3, opt0.b1 as expr from a as a
+        left outer join b as opt0 on opt0.b2 = a.a2
       ) as opt1
       order by opt1.opt_a_a3
     ) as x
@@ -530,14 +530,14 @@ describe "QueryOptimizer", ->
                 { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
                 { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
                 { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
-                { type: "select", expr: { type: "field", tableAlias: "b", column: "b1" }, alias: "expr" }
+                { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
               ]
               from: { 
                 type: "join"
                 kind: "left"
                 left: { type: "table", table: "a", alias: "a" }
-                right: { type: "table", table: "b", alias: "b" }
-                on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
+                right: { type: "table", table: "b", alias: "opt0" }
+                on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
               }
               where: null
             }

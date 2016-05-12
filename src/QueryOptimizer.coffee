@@ -42,6 +42,9 @@ module.exports = class QueryOptimizer
     throw new Error("Unable to optimize query (infinite loop): #{JSON.stringify(query)}")
 
   rewriteScalar: (query) ->
+    # First optimize any inner queries
+    query = @optimizeInnerQueries(query)
+
     # Find scalar to optimize
     scalar = @findScalar(query)
 
@@ -53,7 +56,8 @@ module.exports = class QueryOptimizer
     if not scalar.from.alias
       return query
 
-    scalarAlias = @createAlias()
+    oldScalarAlias = scalar.from.alias
+    newScalarAlias = @createAlias()
 
     # Get table aliases in from
     fromAliases = @extractFromAliases(query.from)
@@ -119,10 +123,16 @@ module.exports = class QueryOptimizer
       opt1Selects = _.map(fields, (field) =>
         { type: "select", expr: field, alias: "opt_#{field.tableAlias}_#{field.column}" }
       )
-      opt1Selects.push({ type: "select", expr: scalar.expr, alias: "expr" })
+      opt1Selects.push({ type: "select", expr: @changeAlias(scalar.expr, oldScalarAlias, newScalarAlias), alias: "expr" })
 
       # Create new opt1 from clause with left outer join to scalar
-      opt1From = { type: "join", kind: "left", left: query.from, right: scalar.from, on: scalar.where }
+      opt1From = { 
+        type: "join"
+        kind: "left"
+        left: query.from
+        right: @changeAlias(scalar.from, oldScalarAlias, newScalarAlias)
+        on: @changeAlias(scalar.where, oldScalarAlias, newScalarAlias) 
+      }
 
       # Create opt1 query opt1
       opt1Query = {
@@ -132,7 +142,7 @@ module.exports = class QueryOptimizer
         where: innerWhere
       }
 
-      # Optimize inner query (TODO give each unique name?)
+      # Optimize inner query
       opt1Query = @optimizeQuery(opt1Query)
 
       # Create alias for opt1 query
@@ -181,10 +191,16 @@ module.exports = class QueryOptimizer
       opt2Selects = opt2Selects.concat(_.map(fields, (field) =>
         { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
       ))
-      opt2Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt1Alias), alias: "expr" })
+      opt2Selects.push({ type: "select", expr: @changeAlias(@remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias), alias: "expr" })
 
       # Create new opt2 from clause with left outer join to scalar
-      opt2From = { type: "join", kind: "left", left: { type: "subquery", query: opt1Query, alias: opt1Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt1Alias) }
+      opt2From = { 
+        type: "join"
+        kind: "left"
+        left: { type: "subquery", query: opt1Query, alias: opt1Alias }
+        right: @changeAlias(scalar.from, oldScalarAlias, newScalarAlias)
+        on: @changeAlias(@remapFields(scalar.where, fields, scalar, opt1Alias), oldScalarAlias, newScalarAlias)
+      }
 
       opt2Query = {
         type: "query"
@@ -240,14 +256,24 @@ module.exports = class QueryOptimizer
       opt2Selects = _.map(fields, (field) =>
         { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
       )
-      opt2Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt1Alias), alias: "expr" })
+      opt2Selects.push({ type: "select", expr: @changeAlias(@remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias), alias: "expr" })
       opt2Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {
         partitionBy: [{ type: "field", tableAlias: opt1Alias, column: "rn" }]
-        orderBy: scalar.orderBy
-        }, alias: "rn" })
+        orderBy: _.map(scalar.orderBy, (ob) => 
+          if ob.expr
+            return _.extend({}, ob, expr: @changeAlias(ob.expr, oldScalarAlias, newScalarAlias))
+          return ob
+        )
+      }, alias: "rn" })
 
       # Create new opt2 from clause with left outer join to scalar
-      opt2From = { type: "join", kind: "left", left: { type: "subquery", query: opt1Query, alias: opt1Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt1Alias) }
+      opt2From = { 
+        type: "join"
+        kind: "left"
+        left: { type: "subquery", query: opt1Query, alias: opt1Alias }
+        right: @changeAlias(scalar.from, oldScalarAlias, newScalarAlias)
+        on: @changeAlias(@remapFields(scalar.where, fields, scalar, opt1Alias), oldScalarAlias, newScalarAlias)
+      }
 
       opt2Query = {
         type: "query"
@@ -303,6 +329,25 @@ module.exports = class QueryOptimizer
 
       return outerQuery
 
+  optimizeInnerQueries: (query) ->
+    optimizeFrom = (from) =>
+      switch from.type
+        when "table", "subexpr"
+          return from
+        when "join"
+          return _.extend({}, from, {
+            left: optimizeFrom(from.left)
+            right: optimizeFrom(from.right)
+          })
+        when "subquery"
+          return _.extend({}, from, {
+            query: @optimizeQuery(from.query)
+          })
+        else
+          throw new Error("Unknown optimizeFrom type #{from.type}")
+
+    query = _.extend({}, query, from: optimizeFrom(query.from))
+
   # Find a scalar in where, selects or order by or expression
   findScalar: (frag) ->
     if not frag
@@ -338,6 +383,117 @@ module.exports = class QueryOptimizer
             return scalar
 
     return null
+
+  # replaceFrag: (frag, fromFrag, toFrag) ->
+  #   if not frag or not frag.type
+  #     return frag
+
+  #   if frag == from
+  #     return to
+
+  #   switch frag.type
+  #     when "query"
+  #       return _.extend({}, frag,
+  #         selects: _.map(frag.selects, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
+  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
+  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         orderBy: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         )
+
+  #     when "field"
+  #       return frag
+  #     when "op"
+  #       return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
+  #     when "case"
+  #       return _.extend({}, frag, {
+  #         input: @replaceFrag(frag.input, fromFrag, toFrag)
+  #         cases: _.map(frag.cases, (cs) =>
+  #           {
+  #             when: @replaceFrag(cs.when, fromFrag, toFrag)
+  #             then: @replaceFrag(cs.then, fromFrag, toFrag)
+  #           }
+  #         )
+  #         else: @replaceFrag(frag.else, fromFrag, toFrag)
+  #       })
+  #     when "scalar"
+  #       return _.extend({}, frag, {
+  #         expr: @replaceFrag(frag.expr, fromFrag, toFrag)
+  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
+  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         orderBy: @replaceFrag(frag.orderBy, fromFrag, toFrag)
+  #       })
+  #     when "table"
+  #       if frag.alias == fromFrag
+  #         return { type: "table", table: frag.table, alias: toFrag }
+  #       return frag
+  #     when "join"
+  #       return _.extend({}, frag, {
+  #         left: @replaceFrag(frag.left, fromFrag, toFrag)
+  #         right: @replaceFrag(frag.right, fromFrag, toFrag)
+  #         on: @replaceFrag(frag.on, fromFrag, toFrag)
+  #       })
+  #     when "literal"
+  #       return frag
+  #     when "token"
+  #       return frag
+  #     else
+  #       throw new Error("Unsupported replaceFrag with type #{frag.type}")
+
+  # Change a specific alias to another one
+  changeAlias: (frag, fromAlias, toAlias) ->
+    if not frag or not frag.type
+      return frag
+
+    switch frag.type
+      when "field"
+        if frag.tableAlias == fromAlias
+          # Remap
+          return { type: "field", tableAlias: toAlias, column: frag.column }
+        return frag
+      when "op"
+        return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @changeAlias(ex, fromAlias, toAlias)))
+      when "case"
+        return _.extend({}, frag, {
+          input: @changeAlias(frag.input, fromAlias, toAlias)
+          cases: _.map(frag.cases, (cs) =>
+            {
+              when: @changeAlias(cs.when, fromAlias, toAlias)
+              then: @changeAlias(cs.then, fromAlias, toAlias)
+            }
+          )
+          else: @changeAlias(frag.else, fromAlias, toAlias)
+        })
+      when "scalar"
+        newFrag = _.extend({}, frag, {
+          expr: @changeAlias(frag.expr, fromAlias, toAlias)
+          from: @changeAlias(frag.from, fromAlias, toAlias)
+          where: @changeAlias(frag.where, fromAlias, toAlias)
+          orderBy: @changeAlias(frag.orderBy, fromAlias, toAlias)
+        })
+        if frag.orderBy
+          newFrag.orderBy = _.map(frag.orderBy, (ob) => 
+            if ob.expr
+              return _.extend({}, ob, expr: @changeAlias(ob.expr, fromAlias, toAlias))
+            return ob
+          )
+        return newFrag
+
+      when "table"
+        if frag.alias == fromAlias
+          return { type: "table", table: frag.table, alias: toAlias }
+        return frag
+      when "join"
+        return _.extend({}, frag, {
+          left: @changeAlias(frag.left, fromAlias, toAlias)
+          right: @changeAlias(frag.right, fromAlias, toAlias)
+          on: @changeAlias(frag.on, fromAlias, toAlias)
+        })
+      when "literal"
+        return frag
+      when "token"
+        return frag
+      else
+        throw new Error("Unsupported changeAlias with type #{frag.type}")
 
   extractFromAliases: (from) ->
     switch from.type
@@ -421,12 +577,19 @@ module.exports = class QueryOptimizer
         if scalar == frag
           return { type: "field", tableAlias: tableAlias, column: "expr" }
         else 
-          return _.extend({}, frag, {
-            frag: @remapFields(frag.frag, fields, scalar, tableAlias)
+          newFrag = _.extend({}, frag, {
+            expr: @remapFields(frag.expr, fields, scalar, tableAlias)
             from: @remapFields(frag.from, fields, scalar, tableAlias)
             where: @remapFields(frag.where, fields, scalar, tableAlias)
-            orderBy: @remapFields(frag.orderBy, fields, scalar, tableAlias)
           })
+          if frag.orderBy
+            newFrag.orderBy = _.map(frag.orderBy, (ob) => 
+              if ob.expr
+                return _.extend({}, ob, expr: @remapFields(ob.expr, fields, scalar, tableAlias))
+              return ob
+            )
+          return newFrag
+
       when "table"
         return frag
       when "join"
