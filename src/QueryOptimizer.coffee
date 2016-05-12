@@ -103,7 +103,7 @@ module.exports = class QueryOptimizer
 
     # Remaps selects for outer query, mapping fields in expr and over clauses
     remapSelects = (selects, alias) =>
-      # Re-write query selects to use new opt0 query
+      # Re-write query selects to use new opt1 query
       return _.map selects, (select) =>
         # Get rid of undefined values
         _.omit({
@@ -115,83 +115,25 @@ module.exports = class QueryOptimizer
       
     # If simple non-aggregate
     if not @isAggr(scalar.expr) and not scalar.limit
-      # Create new selects for opt0 query with all fields + scalar expression
-      opt0Selects = _.map(fields, (field) =>
+      # Create new selects for opt1 query with all fields + scalar expression
+      opt1Selects = _.map(fields, (field) =>
         { type: "select", expr: field, alias: "opt_#{field.tableAlias}_#{field.column}" }
       )
-      opt0Selects.push({ type: "select", expr: scalar.expr, alias: "expr" })
-
-      # Create new opt0 from clause with left outer join to scalar
-      opt0From = { type: "join", kind: "left", left: query.from, right: scalar.from, on: scalar.where }
-
-      # Create opt0 query opt0
-      opt0Query = {
-        type: "query"
-        selects: opt0Selects
-        from: opt0From
-        where: innerWhere
-      }
-
-      # Optimize inner query (TODO give each unique name?)
-      opt0Query = @optimizeQuery(opt0Query)
-
-      # Create alias for opt0 query
-      opt0Alias = @createAlias()
-
-      outerQuery = _.extend({}, query, {
-        # Re-write query selects to use new opt0 query
-        selects: remapSelects(query.selects, opt0Alias)
-        from: {
-          type: "subquery"
-          query: opt0Query
-          alias: opt0Alias
-        }
-        where: @remapFields(outerWhere, fields, scalar, opt0Alias)
-        orderBy: _.map(query.orderBy, (orderBy) =>
-          if not orderBy.expr
-            return orderBy
-          return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, opt0Alias) })
-        )
-      })
-      return outerQuery
-
-    else if not scalar.limit
-      # Create new selects for opt0 query with all fields + row number
-      opt0Selects = _.map(fields, (field) =>
-        { type: "select", expr: field, alias: "opt_#{field.tableAlias}_#{field.column}" }
-      )
-      opt0Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
-
-      # Create alias for opt0 query
-      opt0Alias = @createAlias()
-
-      # Create opt0 query opt0
-      opt0Query = {
-        type: "query"
-        selects: opt0Selects
-        from: query.from
-        where: innerWhere
-      }
-
-      # Optimize inner query
-      opt0Query = @optimizeQuery(opt0Query)
-
-      # Create new selects for opt1 query with row number + all fields + scalar expression
-      opt1Selects = [{ type: "select", expr: { type: "field", tableAlias: opt0Alias, column: "rn" }, alias: "rn" }]
-      opt1Selects = opt1Selects.concat(_.map(fields, (field) =>
-        { type: "select", expr: { type: "field", tableAlias: opt0Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
-      ))
-      opt1Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt0Alias), alias: "expr" })
+      opt1Selects.push({ type: "select", expr: scalar.expr, alias: "expr" })
 
       # Create new opt1 from clause with left outer join to scalar
-      opt1From = { type: "join", kind: "left", left: { type: "subquery", query: opt0Query, alias: opt0Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt0Alias) }
+      opt1From = { type: "join", kind: "left", left: query.from, right: scalar.from, on: scalar.where }
 
+      # Create opt1 query opt1
       opt1Query = {
         type: "query"
         selects: opt1Selects
         from: opt1From
-        groupBy: _.range(1, fields.length + 2)
+        where: innerWhere
       }
+
+      # Optimize inner query (TODO give each unique name?)
+      opt1Query = @optimizeQuery(opt1Query)
 
       # Create alias for opt1 query
       opt1Alias = @createAlias()
@@ -211,82 +153,51 @@ module.exports = class QueryOptimizer
           return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, opt1Alias) })
         )
       })
-
       return outerQuery
 
-    # Limit scalar
-    else 
-      # Create new selects for opt0 query with all fields + row number
-      opt0Selects = _.map(fields, (field) =>
+    else if not scalar.limit
+      # Create new selects for opt1 query with all fields + row number
+      opt1Selects = _.map(fields, (field) =>
         { type: "select", expr: field, alias: "opt_#{field.tableAlias}_#{field.column}" }
       )
-      opt0Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
-
-      # Create opt0 query opt0
-      opt0Query = {
-        type: "query"
-        selects: opt0Selects
-        from: query.from
-        where: innerWhere
-      }
-
-      # Optimize inner query (TODO give each unique name?)
-      opt0Query = @optimizeQuery(opt0Query)
-
-      # Create alias for opt0 query
-      opt0Alias = @createAlias()
-
-      # Create new selects for opt1 query with all fields + scalar expression + ordered row number over inner row number
-      opt1Selects = _.map(fields, (field) =>
-        { type: "select", expr: { type: "field", tableAlias: opt0Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
-      )
-      opt1Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt0Alias), alias: "expr" })
-      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {
-        partitionBy: [{ type: "field", tableAlias: opt0Alias, column: "rn" }]
-        orderBy: scalar.orderBy
-        }, alias: "rn" })
-
-      # Create new opt1 from clause with left outer join to scalar
-      opt1From = { type: "join", kind: "left", left: { type: "subquery", query: opt0Query, alias: opt0Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt0Alias) }
-
-      opt1Query = {
-        type: "query"
-        selects: opt1Selects
-        from: opt1From
-      }
+      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
 
       # Create alias for opt1 query
       opt1Alias = @createAlias()
 
-      opt2Selects = _.map(fields, (field) =>
+      # Create opt1 query opt1
+      opt1Query = {
+        type: "query"
+        selects: opt1Selects
+        from: query.from
+        where: innerWhere
+      }
+
+      # Optimize inner query
+      opt1Query = @optimizeQuery(opt1Query)
+
+      # Create new selects for opt2 query with row number + all fields + scalar expression
+      opt2Selects = [{ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "rn" }, alias: "rn" }]
+      opt2Selects = opt2Selects.concat(_.map(fields, (field) =>
         { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
-      )
-      opt2Selects.push({ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "expr" }, alias: "expr" })
+      ))
+      opt2Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt1Alias), alias: "expr" })
+
+      # Create new opt2 from clause with left outer join to scalar
+      opt2From = { type: "join", kind: "left", left: { type: "subquery", query: opt1Query, alias: opt1Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt1Alias) }
 
       opt2Query = {
         type: "query"
         selects: opt2Selects
-        from: {
-          type: "subquery"
-          query: opt1Query
-          alias: opt1Alias
-        }
-        where: {
-          type: "op"
-          op: "="
-          exprs: [
-            { type: "field", tableAlias: opt1Alias, column: "rn" }
-            { type: "literal", value: 1 }
-          ]
-        }
+        from: opt2From
+        groupBy: _.range(1, fields.length + 2)
       }
 
       # Create alias for opt2 query
       opt2Alias = @createAlias()
 
-      # Wrap in final query
       outerQuery = _.extend({}, query, {
-        # Re-write query selects to use new opt1 query
+        # Re-write query selects to use new opt2 query
         selects: remapSelects(query.selects, opt2Alias)
         from: {
           type: "subquery"
@@ -298,6 +209,95 @@ module.exports = class QueryOptimizer
           if not orderBy.expr
             return orderBy
           return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, opt2Alias) })
+        )
+      })
+
+      return outerQuery
+
+    # Limit scalar
+    else 
+      # Create new selects for opt1 query with all fields + row number
+      opt1Selects = _.map(fields, (field) =>
+        { type: "select", expr: field, alias: "opt_#{field.tableAlias}_#{field.column}" }
+      )
+      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
+
+      # Create opt1 query opt1
+      opt1Query = {
+        type: "query"
+        selects: opt1Selects
+        from: query.from
+        where: innerWhere
+      }
+
+      # Optimize inner query (TODO give each unique name?)
+      opt1Query = @optimizeQuery(opt1Query)
+
+      # Create alias for opt1 query
+      opt1Alias = @createAlias()
+
+      # Create new selects for opt2 query with all fields + scalar expression + ordered row number over inner row number
+      opt2Selects = _.map(fields, (field) =>
+        { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
+      )
+      opt2Selects.push({ type: "select", expr: @remapFields(scalar.expr, fields, null, opt1Alias), alias: "expr" })
+      opt2Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {
+        partitionBy: [{ type: "field", tableAlias: opt1Alias, column: "rn" }]
+        orderBy: scalar.orderBy
+        }, alias: "rn" })
+
+      # Create new opt2 from clause with left outer join to scalar
+      opt2From = { type: "join", kind: "left", left: { type: "subquery", query: opt1Query, alias: opt1Alias }, right: scalar.from, on: @remapFields(scalar.where, fields, scalar, opt1Alias) }
+
+      opt2Query = {
+        type: "query"
+        selects: opt2Selects
+        from: opt2From
+      }
+
+      # Create alias for opt2 query
+      opt2Alias = @createAlias()
+
+      opt3Selects = _.map(fields, (field) =>
+        { type: "select", expr: { type: "field", tableAlias: opt2Alias, column: "opt_#{field.tableAlias}_#{field.column}" }, alias: "opt_#{field.tableAlias}_#{field.column}" }
+      )
+      opt3Selects.push({ type: "select", expr: { type: "field", tableAlias: opt2Alias, column: "expr" }, alias: "expr" })
+
+      opt3Query = {
+        type: "query"
+        selects: opt3Selects
+        from: {
+          type: "subquery"
+          query: opt2Query
+          alias: opt2Alias
+        }
+        where: {
+          type: "op"
+          op: "="
+          exprs: [
+            { type: "field", tableAlias: opt2Alias, column: "rn" }
+            { type: "literal", value: 1 }
+          ]
+        }
+      }
+
+      # Create alias for opt3 query
+      opt3Alias = @createAlias()
+
+      # Wrap in final query
+      outerQuery = _.extend({}, query, {
+        # Re-write query selects to use new opt2 query
+        selects: remapSelects(query.selects, opt3Alias)
+        from: {
+          type: "subquery"
+          query: opt3Query
+          alias: opt3Alias
+        }
+        where: @remapFields(outerWhere, fields, scalar, opt3Alias)
+        orderBy: _.map(query.orderBy, (orderBy) =>
+          if not orderBy.expr
+            return orderBy
+          return _.extend({}, orderBy, { expr: @remapFields(orderBy.expr, fields, scalar, opt3Alias) })
         )
       })
 
