@@ -399,68 +399,15 @@ module.exports = class QueryOptimizer
         return frag
 
       when "op"
-        for expr in frag.exprs
-          scalar = @findScalar(expr)
-          if scalar
-            return scalar
+        if frag.exprs
+          for expr in frag.exprs 
+            scalar = @findScalar(expr)
+            if scalar
+              return scalar
 
     return null
 
-  # replaceFrag: (frag, fromFrag, toFrag) ->
-  #   if not frag or not frag.type
-  #     return frag
-
-  #   if frag == from
-  #     return to
-
-  #   switch frag.type
-  #     when "query"
-  #       return _.extend({}, frag,
-  #         selects: _.map(frag.selects, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
-  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
-  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
-  #         orderBy: @replaceFrag(frag.where, fromFrag, toFrag)
-  #         )
-
-  #     when "field"
-  #       return frag
-  #     when "op"
-  #       return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
-  #     when "case"
-  #       return _.extend({}, frag, {
-  #         input: @replaceFrag(frag.input, fromFrag, toFrag)
-  #         cases: _.map(frag.cases, (cs) =>
-  #           {
-  #             when: @replaceFrag(cs.when, fromFrag, toFrag)
-  #             then: @replaceFrag(cs.then, fromFrag, toFrag)
-  #           }
-  #         )
-  #         else: @replaceFrag(frag.else, fromFrag, toFrag)
-  #       })
-  #     when "scalar"
-  #       return _.extend({}, frag, {
-  #         expr: @replaceFrag(frag.expr, fromFrag, toFrag)
-  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
-  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
-  #         orderBy: @replaceFrag(frag.orderBy, fromFrag, toFrag)
-  #       })
-  #     when "table"
-  #       if frag.alias == fromFrag
-  #         return { type: "table", table: frag.table, alias: toFrag }
-  #       return frag
-  #     when "join"
-  #       return _.extend({}, frag, {
-  #         left: @replaceFrag(frag.left, fromFrag, toFrag)
-  #         right: @replaceFrag(frag.right, fromFrag, toFrag)
-  #         on: @replaceFrag(frag.on, fromFrag, toFrag)
-  #       })
-  #     when "literal"
-  #       return frag
-  #     when "token"
-  #       return frag
-  #     else
-  #       throw new Error("Unsupported replaceFrag with type #{frag.type}")
-
+  
   # Change a specific alias to another one
   changeAlias: (frag, fromAlias, toAlias) ->
     if not frag or not frag.type
@@ -632,3 +579,59 @@ module.exports = class QueryOptimizer
     alias = "opt#{@aliasNum}"
     @aliasNum += 1
     return alias
+
+
+# replaceFrag: (frag, fromFrag, toFrag) ->
+  #   if not frag or not frag.type
+  #     return frag
+
+  #   if frag == from
+  #     return to
+
+  #   switch frag.type
+  #     when "query"
+  #       return _.extend({}, frag,
+  #         selects: _.map(frag.selects, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
+  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
+  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         orderBy: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         )
+
+  #     when "field"
+  #       return frag
+  #     when "op"
+  #       return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @replaceFrag(ex, fromFrag, toFrag)))
+  #     when "case"
+  #       return _.extend({}, frag, {
+  #         input: @replaceFrag(frag.input, fromFrag, toFrag)
+  #         cases: _.map(frag.cases, (cs) =>
+  #           {
+  #             when: @replaceFrag(cs.when, fromFrag, toFrag)
+  #             then: @replaceFrag(cs.then, fromFrag, toFrag)
+  #           }
+  #         )
+  #         else: @replaceFrag(frag.else, fromFrag, toFrag)
+  #       })
+  #     when "scalar"
+  #       return _.extend({}, frag, {
+  #         expr: @replaceFrag(frag.expr, fromFrag, toFrag)
+  #         from: @replaceFrag(frag.from, fromFrag, toFrag)
+  #         where: @replaceFrag(frag.where, fromFrag, toFrag)
+  #         orderBy: @replaceFrag(frag.orderBy, fromFrag, toFrag)
+  #       })
+  #     when "table"
+  #       if frag.alias == fromFrag
+  #         return { type: "table", table: frag.table, alias: toFrag }
+  #       return frag
+  #     when "join"
+  #       return _.extend({}, frag, {
+  #         left: @replaceFrag(frag.left, fromFrag, toFrag)
+  #         right: @replaceFrag(frag.right, fromFrag, toFrag)
+  #         on: @replaceFrag(frag.on, fromFrag, toFrag)
+  #       })
+  #     when "literal"
+  #       return frag
+  #     when "token"
+  #       return frag
+  #     else
+  #       throw new Error("Unsupported replaceFrag with type #{frag.type}")
