@@ -40,12 +40,11 @@ module.exports = class QueryOptimizer
       console.log sql.toInline()
       console.log "================"
     catch ex
-      console.trace("Failure?")
       console.log "FAILURE: " + ex.message
       console.log JSON.stringify(query, null, 2)
 
   # Run rewriteScalar query repeatedly until no more changes
-  optimizeQuery: (query, debug = true) ->
+  optimizeQuery: (query, debug = false) ->
     if debug
       console.log "================== BEFORE OPT ================"
       @debugQuery(query)
@@ -269,7 +268,7 @@ module.exports = class QueryOptimizer
         where: innerWhere
       }
 
-      # Optimize inner query (TODO give each unique name?)
+      # Optimize inner query
       opt1Query = @optimizeQuery(opt1Query, false)
 
       # Create alias for opt1 query
