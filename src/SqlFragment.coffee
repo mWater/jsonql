@@ -50,7 +50,9 @@ module.exports = class SqlFragment
 
     # Substitute parameters
     n = 0
-    sql = @sql.replace(/\?/g, (str) =>
+    # All the question marks not followed by | or &
+    # ?| and ?& are jsonb operators (so is ?, but it can be replaced by one of the others)
+    sql = @sql.replace(/\?(?!\||&)/g, (str) =>
       # Insert nth parameter
       # Check type
       param = @params[n]
