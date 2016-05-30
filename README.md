@@ -114,3 +114,21 @@ Subexpression is a from that is an expression, as in select * from someexpressio
 
 Special literal token, used for PostGIS, etc.
 Currently "!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"
+
+### union
+
+Takes a series of unions
+
+{
+	type: "union"
+	queries: array of type query
+}
+
+### union all
+
+Takes a series of unions
+
+{
+	type: "union all"
+	queries: array of type query
+}

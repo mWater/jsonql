@@ -4,18 +4,30 @@ QueryOptimizer = require './QueryOptimizer'
 
 # Compiles jsonql to sql
 module.exports = class JsonqlCompiler 
-  constructor: (schemaMap, optimizeQueries = true) ->
+  constructor: (schemaMap, optimizeQueries = false) ->
     @schemaMap = schemaMap
     @nextId = 1
 
     @optimizeQueries = optimizeQueries
 
-  # Compile a query made up of selects, from, where, order, limit, skip
+  # Compile a query (or union of queries) made up of selects, from, where, order, limit, skip
   # `aliases` are aliases to tables which have a particular row already selected
   # for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
   # expression, so it already has a row selected.
   # ctes are aliases for common table expressions. They are a map of alias to true
   compileQuery: (query, aliases = {}, ctes = {}) ->
+    # If union, handle that
+    if query.type == "union"
+      return SqlFragment.join(_.map(query.queries, (q) =>
+        new SqlFragment("(").append(@compileQuery(q, aliases, ctes)).append(")")
+        ), " union ")
+
+    # If union all, handle that
+    if query.type == "union all"
+      return SqlFragment.join(_.map(query.queries, (q) =>
+        new SqlFragment("(").append(@compileQuery(q, aliases, ctes)).append(")")
+        ), " union all ")
+
     # Optimize query first
     if @optimizeQueries
       query = new QueryOptimizer().optimizeQuery(query)

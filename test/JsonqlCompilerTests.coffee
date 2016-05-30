@@ -232,6 +232,32 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select a_abc1."q" as "x" from a_wq as "a_abc1"'
     assert.deepEqual compiled.params, [5]
 
+  it 'compiles union all query', ->
+    query1 = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 4 }, alias: "x" }
+      ]
+      from: { type: "table", table: "abc", alias: "abc1" }
+    }
+
+    query2 = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "literal", value: 5 }, alias: "x" }
+      ]
+      from: { type: "table", table: "abc", alias: "abc1" }
+    }
+
+    query = {
+      type: "union all"
+      queries: [query1, query2]
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, '(select ? as "x" from ABC as "a_abc1") union all (select ? as "x" from ABC as "a_abc1")'
+    assert.deepEqual compiled.params, [4, 5]
+
   # Not longer check this as subtables can have indeterminate columns
   # it 'check that with columns exist', ->
   #   withQuery = { 
