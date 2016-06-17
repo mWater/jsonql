@@ -499,6 +499,11 @@ describe "JsonqlCompiler", ->
         assert.throws () =>
           @testExpr({ type: "op", op: "xyz", exprs: [@a] }, "xyz(?)", [1])
 
+      it 'array_agg with orderBy', ->
+        orderBy = [{ expr: { type: "field", tableAlias: "abc", column: "x" }, direction: "asc" }] 
+        expr = { type: "op", op: "array_agg", exprs: [@a], orderBy: orderBy }
+        @testExpr(expr, "array_agg(? order by a_abc.X asc)", [1], { abc: "abc" })
+
       it "creates exists", ->
         query = { 
           type: "query"

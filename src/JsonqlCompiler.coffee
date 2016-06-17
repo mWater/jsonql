@@ -421,6 +421,10 @@ module.exports = class JsonqlCompiler
           # Handle special case of count(*)
           if expr.op == "count" and inner.isEmpty()
             inner = "*"
+
+          # Handle orderBy
+          if expr.orderBy
+            inner = inner.append(@compileOrderBy(expr.orderBy, aliases))
             
           return new SqlFragment(expr.op + "(")
             .append(inner)

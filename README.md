@@ -35,13 +35,14 @@ Expression. Has op:
 `+`, `-`, `*`, `/`, `~`, `~*`, 
 `like`, `and`, `or`, `not`, `is null`, `is not null`, `between`
 `avg`, `min`, `max`, `row_number`, etc.
-`exists`
+`exists`, `[]`, `array_agg`
 
 For count(*), use count with no expressions.
 
 Has 
  exprs: [expression]
  modifier: "any", "all" (optional)
+ orderBy: array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc)
 
 ### case
 
