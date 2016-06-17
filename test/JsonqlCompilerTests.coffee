@@ -258,6 +258,12 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, '(select ? as "x" from ABC as "a_abc1") union all (select ? as "x" from ABC as "a_abc1")'
     assert.deepEqual compiled.params, [4, 5]
 
+  it "compiles reused alias", ->
+    expr = {"type":"scalar","expr":{"type":"field","tableAlias":"j1","column":"_id"},"from":{"type":"table","table":"entities.water_point","alias":"j1"},"where":{"type":"scalar","expr":{"type":"field","tableAlias":"j1","column":"_id"},"from":{"type":"table","table":"entities.water_point","alias":"j1"},"where":{"type":"op","op":"=","exprs":[{"type":"op","op":"coalesce","exprs":[{"type":"op","op":"#>>","exprs":[{"type":"field","tableAlias":"main","column":"data"},"{e75938878a034797a08969f847629931,value,code}"]},{"type":"op","op":"#>>","exprs":[{"type":"field","tableAlias":"main","column":"data"},"{e75938878a034797a08969f847629931,value}"]}]},{"type":"field","tableAlias":"j1","column":"code"}]}}}
+    compiled = @compiler.compileExpr(expr, { main: "xyz" })
+    console.log compiled.toInline()
+
+
   # Not longer check this as subtables can have indeterminate columns
   # it 'check that with columns exist', ->
   #   withQuery = { 
@@ -464,6 +470,9 @@ describe "JsonqlCompiler", ->
 
       it '::text', ->
         @testExpr({ type: "op", op: "::text", exprs: [@a] }, "(?::text)", [1])   
+
+      it '[]', ->
+        @testExpr({ type: "op", op: "[]", exprs: [@a, @b] }, "((?)[?])", [1, 2])
 
       it '= any', ->
         arr = { type: "literal", value: ["x", "y"] }

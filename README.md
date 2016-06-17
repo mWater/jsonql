@@ -108,7 +108,7 @@ query aliased.
 
 Subexpression is a from that is an expression, as in select * from someexpression as somealias
 
-`{ type: "subquery", expr: subquery expression, alias: somealias }`
+`{ type: "subexpr", expr: subquery expression, alias: somealias }`
 
 ### token
 

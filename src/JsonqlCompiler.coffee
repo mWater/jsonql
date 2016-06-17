@@ -151,9 +151,10 @@ module.exports = class JsonqlCompiler
         # Validate alias
         @validateAlias(from.alias)
 
-        # If alias already in use, refuse
-        if aliases[from.alias]?
-          throw new Error("Alias #{from.alias} in use")
+        console.log "###TODO REMOVE"
+        # # If alias already in use, refuse
+        # if aliases[from.alias]?
+        #   throw new Error("Alias #{from.alias} in use")
 
         # If from cte, alias to true
         if ctes[from.table]
@@ -405,6 +406,13 @@ module.exports = class JsonqlCompiler
         return new SqlFragment("exists (")
           .append(@compileQuery(expr.exprs[0], aliases))
           .append(")")
+      when "[]"
+        return new SqlFragment("((")
+          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(")[")
+          .append(@compileExpr(expr.exprs[1], aliases))
+          .append("])")
+
       else
         # Whitelist known functions and all PostGIS
         if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)
