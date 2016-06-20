@@ -146,15 +146,11 @@ module.exports = class JsonqlCompiler
   # Compiles table or join returning sql and modifying aliases
   # ctes are aliases for common table expressions. They are a map of alias to true
   compileFrom: (from, aliases = {}, ctes = {}) ->
+    # TODO check that alias is not repeated in from
     switch from.type 
       when "table"
         # Validate alias
         @validateAlias(from.alias)
-
-        console.log "###TODO REMOVE"
-        # # If alias already in use, refuse
-        # if aliases[from.alias]?
-        #   throw new Error("Alias #{from.alias} in use")
 
         # If from cte, alias to true
         if ctes[from.table]
