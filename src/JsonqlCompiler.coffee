@@ -347,6 +347,7 @@ module.exports = class JsonqlCompiler
       "round"
       "ceiling"
       "floor"
+      "date_part"
     ]
 
     switch expr.op
