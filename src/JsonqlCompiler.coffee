@@ -337,6 +337,8 @@ module.exports = class JsonqlCompiler
       "convert_to_decimal"  # Custom function used for safely converting to decimal
       "json_build_array"
       "json_build_object"
+      "jsonb_build_array"
+      "jsonb_build_object"
       "json_object"
       "json_array_elements"
       "jsonb_array_elements"
@@ -352,7 +354,6 @@ module.exports = class JsonqlCompiler
       "ceiling"
       "floor"
       "date_part"
-      "row_to_json"
       "json_strip_nulls"
       "jsonb_strip_nulls"
     ]
