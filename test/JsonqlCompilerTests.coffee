@@ -32,6 +32,20 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select ? as "x" from ABC as "a_abc1"'
     assert.deepEqual compiled.params, [4]
 
+  it 'compiles distinct query', ->
+    query = { 
+      type: "query"
+      distinct: true
+      selects: [
+        { type: "select", expr: { type: "literal", value: 4 }, alias: "x" }
+      ]
+      from: { type: "table", table: "abc", alias: "abc1" }
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select distinct ? as "x" from ABC as "a_abc1"'
+    assert.deepEqual compiled.params, [4]
+
   it 'compiles query with null select', ->
     query = { 
       type: "query"

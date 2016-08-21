@@ -60,6 +60,9 @@ module.exports = class JsonqlCompiler
 
     frag.append('select ')
 
+    if query.distinct
+      frag.append('distinct ')
+
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
     if query.from
       from = @compileFrom(query.from, aliases, ctes)

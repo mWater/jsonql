@@ -26,6 +26,7 @@ Top level. Has
  limit: integer (optional)
  offset: integer (optional)
  withs: common table expressions (optional). array of { query:, alias: }
+ distinct: true/false (optional)
 
 ### op
 
