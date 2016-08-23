@@ -359,6 +359,8 @@ module.exports = class JsonqlCompiler
       "date_part"
       "json_strip_nulls"
       "jsonb_strip_nulls"
+      "cos"
+      "sin"
     ]
 
     switch expr.op
