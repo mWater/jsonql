@@ -361,6 +361,7 @@ module.exports = class JsonqlCompiler
       "jsonb_strip_nulls"
       "cos"
       "sin"
+      "nullif"
     ]
 
     switch expr.op
