@@ -70,7 +70,7 @@ module.exports = class JsonqlCompiler
       from = null
 
     # Compile selects
-    selects = _.map(query.selects, (s) => @compileSelect(s, aliases))
+    selects = _.map(query.selects, (s) => @compileSelect(s, aliases, ctes))
 
     # Handle null select
     if selects.length == 0
@@ -85,7 +85,7 @@ module.exports = class JsonqlCompiler
 
     # Add where
     if query.where
-      where = @compileExpr(query.where, aliases)
+      where = @compileExpr(query.where, aliases, ctes)
       if not where.isEmpty()
         frag.append(" where ")
         frag.append(where)
@@ -102,7 +102,7 @@ module.exports = class JsonqlCompiler
       frag.append(SqlFragment.join(_.map(query.groupBy, (groupBy) =>
         if isInt(groupBy)
           return new SqlFragment("#{groupBy}")
-        return @compileExpr(groupBy, aliases)
+        return @compileExpr(groupBy, aliases, ctes)
         ), ", "))
 
     # Add order by
@@ -129,8 +129,8 @@ module.exports = class JsonqlCompiler
 
   # select is { expr: <expr>, alias: <string> }
   # aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
-  compileSelect: (select, aliases) ->
-    frag = @compileExpr(select.expr, aliases)
+  compileSelect: (select, aliases, ctes = {}) ->
+    frag = @compileExpr(select.expr, aliases, ctes)
 
     # Add over
     if select.over
@@ -138,7 +138,7 @@ module.exports = class JsonqlCompiler
       if select.over.partitionBy
         frag.append("partition by ")
         frag.append(SqlFragment.join(
-          _.map(select.over.partitionBy, (pb) => @compileExpr(pb, aliases)), ", "))
+          _.map(select.over.partitionBy, (pb) => @compileExpr(pb, aliases, ctes)), ", "))
       if select.over.orderBy
         frag.append(@compileOrderBy(select.over.orderBy, aliases))
       frag.append(")")
@@ -186,7 +186,7 @@ module.exports = class JsonqlCompiler
         _.extend(aliases, right.aliases)
 
         # Compile on
-        onSql = @compileExpr(from.on, aliases)
+        onSql = @compileExpr(from.on, aliases, ctes)
 
         if from.kind not in ['inner', 'left', 'right']
           throw new Error("Unsupported join kind #{from.kind}")
@@ -272,7 +272,7 @@ module.exports = class JsonqlCompiler
 
   # Compiles an expression
   # aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
-  compileExpr: (expr, aliases) ->
+  compileExpr: (expr, aliases, ctes = {}) ->
     if not aliases?
       throw new Error("Missing aliases")
 
@@ -287,7 +287,7 @@ module.exports = class JsonqlCompiler
       when "literal"
         return new SqlFragment("?", [expr.value])
       when "op"
-        return @compileOpExpr(expr, aliases)
+        return @compileOpExpr(expr, aliases, ctes)
       when "field"
         # Check that alias exists
         if not aliases[expr.tableAlias]?
@@ -305,18 +305,18 @@ module.exports = class JsonqlCompiler
 
         return @schemaMap.mapColumn(aliases[expr.tableAlias], expr.column, @schemaMap.mapTableAlias(expr.tableAlias))
       when "scalar"
-        return @compileScalar(expr, aliases)
+        return @compileScalar(expr, aliases, ctes)
       when "token"
         if expr.token in ["!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"]
           return new SqlFragment(expr.token)
         throw new Error("Unsupported token #{expr.token}")
       when "case"
-        return @compileCaseExpr(expr, aliases)
+        return @compileCaseExpr(expr, aliases, ctes)
       else
         throw new Error("Unsupported type #{expr.type} in #{JSON.stringify(expr)}")
 
   # Compiles an op expression
-  compileOpExpr: (expr, aliases) ->
+  compileOpExpr: (expr, aliases, ctes = {}) ->
     functions = [
       "avg"
       "min"
@@ -367,19 +367,19 @@ module.exports = class JsonqlCompiler
     switch expr.op
       when ">", "<", ">=", "<=", "=", "<>", "/", "~", "~*", "like", "&&", "->>", "#>>", "@>", '->', '#>', 'in', '?|', "?&"
         frag = new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(new SqlFragment(" " + expr.op + " "))
 
         if expr.modifier in ['any', 'all']
           frag.append(expr.modifier).append("(")
-            .append(@compileExpr(expr.exprs[1], aliases))
+            .append(@compileExpr(expr.exprs[1], aliases, ctes))
             .append("))")
         else
-          frag.append(@compileExpr(expr.exprs[1], aliases))
+          frag.append(@compileExpr(expr.exprs[1], aliases, ctes))
             .append(")")
         return frag
       when "and", "or", "+", "-", "*", "||"
-        compiledExprs = _.map(expr.exprs, (e) => @compileExpr(e, aliases))
+        compiledExprs = _.map(expr.exprs, (e) => @compileExpr(e, aliases, ctes))
 
         # Remove blanks
         compiledExprs = _.filter(compiledExprs, (e) -> not e.isEmpty())
@@ -393,41 +393,41 @@ module.exports = class JsonqlCompiler
           return new SqlFragment("(").append(inner).append(")")
       when "is null", "is not null"
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(new SqlFragment(" " + expr.op))
           .append(")")
       when "not"
         return new SqlFragment("(not ")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(")")
       when "between"
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(" between ")
-          .append(@compileExpr(expr.exprs[1], aliases))
+          .append(@compileExpr(expr.exprs[1], aliases, ctes))
           .append(" and ")
-          .append(@compileExpr(expr.exprs[2], aliases))
+          .append(@compileExpr(expr.exprs[2], aliases, ctes))
           .append(")")
       when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean", "::uuid[]", "::text[]", "::json", "::jsonb"
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(expr.op)
           .append(")")
       when "exists"
         return new SqlFragment("exists (")
-          .append(@compileQuery(expr.exprs[0], aliases))
+          .append(@compileQuery(expr.exprs[0], aliases, ctes))
           .append(")")
       when "[]"
         return new SqlFragment("((")
-          .append(@compileExpr(expr.exprs[0], aliases))
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(")[")
-          .append(@compileExpr(expr.exprs[1], aliases))
+          .append(@compileExpr(expr.exprs[1], aliases, ctes))
           .append("])")
 
       else
         # Whitelist known functions and all PostGIS
         if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)
-          inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases)), ", ")
+          inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases, ctes)), ", ")
 
           # Handle special case of count(*)
           if expr.op == "count" and inner.isEmpty()
@@ -444,17 +444,17 @@ module.exports = class JsonqlCompiler
         throw new Error("Unsupported op #{expr.op}")
 
   # Compile a scalar subquery made up of expr, from, where, order, limit, skip
-  compileScalar: (query, aliases) ->
+  compileScalar: (query, aliases, ctes = {}) ->
     frag = new SqlFragment('(select ')
 
     # Make a copy for use internally
     aliases = _.clone(aliases)
 
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    from = @compileFrom(query.from, aliases)
+    from = @compileFrom(query.from, aliases, ctes)
 
     # Compile single select expression
-    frag.append(@compileExpr(query.expr, aliases))
+    frag.append(@compileExpr(query.expr, aliases, ctes))
 
     # Add from
     frag.append(" from ")
@@ -462,7 +462,7 @@ module.exports = class JsonqlCompiler
 
     # Add where
     if query.where
-      where = @compileExpr(query.where, aliases)
+      where = @compileExpr(query.where, aliases, ctes)
       if not where.isEmpty()
         frag.append(" where ")
         frag.append(where)
@@ -490,23 +490,23 @@ module.exports = class JsonqlCompiler
     frag.append(")")
     return frag
 
-  compileCaseExpr: (expr, aliases) ->
+  compileCaseExpr: (expr, aliases, ctes = {}) ->
     frag = new SqlFragment('case ')
 
     if expr.input?
-      frag.append(@compileExpr(expr.input, aliases))
+      frag.append(@compileExpr(expr.input, aliases, ctes))
       frag.append(" ")
 
     for c in expr.cases
       frag.append("when ")
-      frag.append(@compileExpr(c.when, aliases))
+      frag.append(@compileExpr(c.when, aliases, ctes))
       frag.append(" then ")
-      frag.append(@compileExpr(c.then, aliases))
+      frag.append(@compileExpr(c.then, aliases, ctes))
       frag.append(" ")
 
     if expr.else?
       frag.append("else ")
-      frag.append(@compileExpr(expr.else, aliases))
+      frag.append(@compileExpr(expr.else, aliases, ctes))
       frag.append(" ")
 
     frag.append("end")
