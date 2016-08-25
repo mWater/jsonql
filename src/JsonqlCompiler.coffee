@@ -175,8 +175,8 @@ module.exports = class JsonqlCompiler
 
       when "join"
         # Compile left and right
-        left = @compileFrom(from.left, aliases)
-        right = @compileFrom(from.right, aliases)
+        left = @compileFrom(from.left, aliases, ctes)
+        right = @compileFrom(from.right, aliases, ctes)
 
         # Make sure aliases don't overlap
         if _.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0
