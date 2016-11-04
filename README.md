@@ -22,7 +22,7 @@ Top level. Has
  from: join or table or subquery or subexpression
  where: boolean expression (optional)
  groupBy: array of ordinals (1 based) or expressions (optional)  
- orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) } (optional)
+ orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional)
  limit: integer (optional)
  offset: integer (optional)
  withs: common table expressions (optional). array of { query:, alias: }

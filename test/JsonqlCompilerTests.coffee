@@ -135,6 +135,25 @@ describe "JsonqlCompiler", ->
     assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by 1 desc, 2'
     assert.deepEqual compiled.params, []
 
+  it 'compiles query with orderBy ordinal with nulls', ->
+    query = { 
+      type: "query"
+      selects: [
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "p" }, alias: "x" }
+        { type: "select", expr: { type: "field", tableAlias: "abc1", column: "q" }, alias: "y" }
+      ]
+      from: { type: "table", table: "abc", alias: "abc1" }
+      orderBy: [
+        { ordinal: 1, direction: "desc", nulls: "first" }
+        { ordinal: 2 }
+      ]
+    }
+
+    compiled = @compiler.compileQuery(query)
+    assert.equal compiled.sql, 'select a_abc1.P as "x", a_abc1.Q as "y" from ABC as "a_abc1" order by 1 desc nulls first, 2'
+    assert.deepEqual compiled.params, []
+
+  
   it 'compiles query with orderBy expr', ->
     query = { 
       type: "query"

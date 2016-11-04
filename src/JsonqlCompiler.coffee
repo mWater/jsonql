@@ -266,6 +266,8 @@ module.exports = class JsonqlCompiler
             f = @compileExpr(o.expr, aliases)
           if o.direction
             f.append(" " + o.direction)
+          if o.nulls and o.nulls in ['first', 'last']
+            f.append(" nulls #{o.nulls}")
           return f
         ), ", "))
     return frag
