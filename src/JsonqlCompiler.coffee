@@ -345,6 +345,8 @@ module.exports = class JsonqlCompiler
       "json_build_object"
       "jsonb_build_array"
       "jsonb_build_object"
+      "json_array_length"
+      "jsonb_array_length"
       "json_object"
       "json_array_elements"
       "jsonb_array_elements"
