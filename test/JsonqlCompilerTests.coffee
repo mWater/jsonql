@@ -553,6 +553,7 @@ describe "JsonqlCompiler", ->
     describe "scalar", ->
       it "simple scalar", ->
         @testExpr({ type: "scalar", expr: @a, from: { type: "table", table: "abc", alias: "abc1" } }, '(select ? from ABC as "a_abc1")', [1])
+
       it "scalar with orderBy expr", ->
         @testExpr({ 
           type: "scalar"
@@ -563,3 +564,25 @@ describe "JsonqlCompiler", ->
             direction: "desc"
             }]
         }, '(select ? from ABC as "a_abc1" order by ? desc)', [1,2]) 
+
+      it 'compiles scalar with withs', ->
+        withQuery = { 
+          type: "query"
+          selects: [
+            { type: "select", expr: { type: "literal", value: 5 }, alias: "q" }
+          ]
+          from: { type: "table", table: "xyz", alias: "xyz1" }
+        }
+
+        @testExpr({ 
+          type: "scalar"
+          expr: @a
+          from: { type: "table", table: "abc", alias: "abc1" } 
+          withs: [
+            { query: withQuery, alias: "wq" }
+          ]
+          orderBy: [{
+            expr: @b
+            direction: "desc"
+            }]
+        }, '(with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select ? from ABC as "a_abc1" order by ? desc)', [5,1,2]) 

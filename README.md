@@ -69,6 +69,7 @@ Scalar subquery. Has:
  from: join or table
  orderBy: optional array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) }
  limit: integer (optional)
+ withs: common table expressions (optional). array of { query:, alias: }
 
 ### field
 

@@ -450,10 +450,33 @@ module.exports = class JsonqlCompiler
 
   # Compile a scalar subquery made up of expr, from, where, order, limit, skip
   compileScalar: (query, aliases, ctes = {}) ->
-    frag = new SqlFragment('(select ')
+    frag = new SqlFragment('(')
 
     # Make a copy for use internally
     aliases = _.clone(aliases)
+    ctes = _.clone(ctes)
+
+    # Compile withs
+    if query.withs and query.withs.length > 0
+      withClauses = []
+      for w in query.withs
+        f = new SqlFragment('"').append(@schemaMap.mapTableAlias(w.alias))
+        f.append("\" as (")
+        f.append(@compileQuery(w.query, aliases))
+        f.append(")")
+        withClauses.push(f)
+
+        # Add to cte tables
+        if ctes[w.alias]
+          throw new Error("CTE alias #{w.alias} in use")
+
+        ctes[w.alias] = true
+
+      frag.append("with ")
+      frag.append(SqlFragment.join(withClauses, ", "))
+      frag.append(" ")
+
+    frag.append('select ')
 
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
     from = @compileFrom(query.from, aliases, ctes)
