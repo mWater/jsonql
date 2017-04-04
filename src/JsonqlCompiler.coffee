@@ -441,6 +441,9 @@ module.exports = class JsonqlCompiler
           # Handle orderBy
           if expr.orderBy
             inner = inner.append(@compileOrderBy(expr.orderBy, aliases))
+
+          if expr.modifier == "distinct"
+            inner = new SqlFragment("distinct ").append(inner)
             
           return new SqlFragment(expr.op + "(")
             .append(inner)

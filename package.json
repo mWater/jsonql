@@ -1,6 +1,7 @@
 {
   "name": "jsonql",
   "version": "1.12.0",
+  "private": true,
   "description": "JSON representation of SQL",
   "main": "lib/index.js",
   "directories": {

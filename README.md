@@ -42,7 +42,7 @@ For count(*), use count with no expressions.
 
 Has 
  exprs: [expression]
- modifier: "any", "all" (optional)
+ modifier: "any", "all", "distinct" (optional)
  orderBy: array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc)
 
 ### case
@@ -59,7 +59,7 @@ Contains an expression and alias
 { type: "select", expr: expression, alias: alias of expression }
 
 Can also contain `over` for window functions. Both partitionBy and orderBy are optional
-over: { partitionBy: [ list of expressions ], orderBy: [ list of { expr: expression, direction: "asc"/"desc" } ]}
+over: { partitionBy: [ list of expressions ], orderBy: [ list of { expr: expression, direction: "asc"/"desc", nulls: "last"/"first" (default is not set) } ]}
 
 ### scalar 
 
@@ -67,7 +67,7 @@ Scalar subquery. Has:
  expr: expr
  where: boolean expression
  from: join or table
- orderBy: optional array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc) }
+ orderBy: optional array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) }
  limit: integer (optional)
  withs: common table expressions (optional). array of { query:, alias: }
 

@@ -529,6 +529,7 @@ describe "JsonqlCompiler", ->
         @testExpr({ type: "op", op: "var", exprs: [@a] }, "var(?)", [1])
         @testExpr({ type: "op", op: "varp", exprs: [@a] }, "varp(?)", [1])
         @testExpr({ type: "op", op: "count", exprs: [] }, "count(*)", [])
+        @testExpr({ type: "op", op: "count", modifier: "distinct", exprs: [@a] }, "count(distinct ?)", [1])
         assert.throws () =>
           @testExpr({ type: "op", op: "xyz", exprs: [@a] }, "xyz(?)", [1])
 
@@ -577,7 +578,7 @@ describe "JsonqlCompiler", ->
         @testExpr({ 
           type: "scalar"
           expr: @a
-          from: { type: "table", table: "abc", alias: "abc1" } 
+          from: { type: "table", table: "wq", alias: "abc1" } 
           withs: [
             { query: withQuery, alias: "wq" }
           ]
@@ -585,4 +586,4 @@ describe "JsonqlCompiler", ->
             expr: @b
             direction: "desc"
             }]
-        }, '(with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select ? from ABC as "a_abc1" order by ? desc)', [5,1,2]) 
+        }, '(with "a_wq" as (select ? as "q" from XYZ as "a_xyz1") select ? from a_wq as "a_abc1" order by ? desc)', [5,1,2]) 
