@@ -420,7 +420,16 @@ module.exports = class QueryOptimizer
           return { type: "field", tableAlias: toAlias, column: frag.column }
         return frag
       when "op"
-        return _.extend({}, frag, exprs: _.map(frag.exprs, (ex) => @changeAlias(ex, fromAlias, toAlias)))
+        newFrag = _.extend({}, frag, {
+          exprs: _.map(frag.exprs, (ex) => @changeAlias(ex, fromAlias, toAlias))
+        })
+        if frag.orderBy
+          newFrag.orderBy = _.map(frag.orderBy, (ob) => 
+            if ob.expr
+              return _.extend({}, ob, expr: @changeAlias(ob.expr, fromAlias, toAlias))
+            return ob
+          )
+        return newFrag
       when "case"
         return _.extend({}, frag, {
           input: @changeAlias(frag.input, fromAlias, toAlias)
@@ -505,7 +514,9 @@ module.exports = class QueryOptimizer
       when "field"
         return false
       when "op"
-        return expr.op in ['sum', 'min', 'max', 'avg', 'count', 'stdev', 'stdevp', 'var', 'varp']
+        if expr.op in ['sum', 'min', 'max', 'avg', 'count', 'stdev', 'stdevp', 'var', 'varp', 'array_agg']
+          return true
+        return _.any(expr.exprs, (ex) => @isAggr(ex))
       when "case"
         return _.any(expr.cases, (cs) => @isAggr(cs.then))
       when "scalar"
