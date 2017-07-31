@@ -431,7 +431,10 @@ module.exports = class JsonqlCompiler
           .append(")[")
           .append(@compileExpr(expr.exprs[1], aliases, ctes))
           .append("])")
-
+      when "interval"
+        return new SqlFragment("(interval ")
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(")")
       else
         # Whitelist known functions and all PostGIS
         if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/)

@@ -414,6 +414,7 @@ describe "JsonqlCompiler", ->
       @c = { type: "literal", value: 3 }
       @d = { type: "literal", value: 4 }
       @e = { type: "literal", value: 5 }
+      @str = { type: "literal", value: "xyz" }
 
       @testExpr = (expr, sql, params, aliases={}) ->
         fr = @compiler.compileExpr(expr, aliases)
@@ -550,6 +551,9 @@ describe "JsonqlCompiler", ->
         @testExpr({ type: "op", op: "exists", exprs:[
           query
           ] }, 'exists (select ? as "x" from ABC as "a_abc1")', [4])
+
+      it 'interval', ->
+        @testExpr({ type: "op", op: "interval", exprs: [@str] }, "(interval ?)", ["xyz"])
 
     describe "scalar", ->
       it "simple scalar", ->
