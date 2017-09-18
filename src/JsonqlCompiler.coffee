@@ -130,18 +130,12 @@ module.exports = class JsonqlCompiler
   # select is { expr: <expr>, alias: <string> }
   # aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
   compileSelect: (select, aliases, ctes = {}) ->
-    frag = @compileExpr(select.expr, aliases, ctes)
-
-    # Add over
+    # Add legacy over to expr
+    expr = select.expr
     if select.over
-      frag.append(" over (")
-      if select.over.partitionBy
-        frag.append("partition by ")
-        frag.append(SqlFragment.join(
-          _.map(select.over.partitionBy, (pb) => @compileExpr(pb, aliases, ctes)), ", "))
-      if select.over.orderBy
-        frag.append(@compileOrderBy(select.over.orderBy, aliases))
-      frag.append(")")
+      expr = _.extend({}, expr, over: select.over)
+
+    frag = @compileExpr(expr, aliases, ctes)
 
     frag.append(" as ")
 
@@ -450,10 +444,23 @@ module.exports = class JsonqlCompiler
 
           if expr.modifier == "distinct"
             inner = new SqlFragment("distinct ").append(inner)
-            
-          return new SqlFragment(expr.op + "(")
+
+          frag = new SqlFragment(expr.op + "(")
             .append(inner)
             .append(")")
+
+          if expr.over
+            frag = new SqlFragment("(").append(frag)
+            frag.append(" over (")
+            if expr.over.partitionBy
+              frag.append("partition by ")
+              frag.append(SqlFragment.join(
+                _.map(expr.over.partitionBy, (pb) => @compileExpr(pb, aliases, ctes)), ", "))
+            if expr.over.orderBy
+              frag.append(@compileOrderBy(expr.over.orderBy, aliases))
+            frag.append("))")
+
+          return frag
 
         throw new Error("Unsupported op #{expr.op}")
 

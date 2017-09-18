@@ -335,23 +335,23 @@ describe "JsonqlCompiler", ->
     select = { expr: { type: "op", op: "row_number", exprs: [] }, alias: "abc" }
     assert.equal @compiler.compileSelect(select, {}).sql, "row_number() as \"abc\""
 
-  it 'compiles select over with partitionBy', ->
+  it 'compiles select over with partitionBy (legacy)', ->
     over = { partitionBy: [{ type: "field", tableAlias: "abc", column: "x" }] }
     select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
     sql = @compiler.compileSelect(select, { abc: "def" })
-    assert.equal sql.sql, "row_number() over (partition by a_abc.X) as \"xyz\""
+    assert.equal sql.sql, "(row_number() over (partition by a_abc.X)) as \"xyz\""
 
-  it 'compiles select over with orderBy', ->
+  it 'compiles select over with orderBy (legacy)', ->
     over = { orderBy: [ { expr: { type: "field", tableAlias: "abc", column: "x" }, direction: "asc" }] }
     select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
     sql = @compiler.compileSelect(select, { abc: "def" })
-    assert.equal sql.sql, "row_number() over ( order by a_abc.X asc) as \"xyz\""
+    assert.equal sql.sql, "(row_number() over ( order by a_abc.X asc)) as \"xyz\""
 
-  it 'compiles select over', ->
+  it 'compiles select over (legacy)', ->
     over = { }
     select = { expr: { type: "op", op: "row_number", exprs: [] }, over: over, alias: "xyz" }
     sql = @compiler.compileSelect(select, { abc: "def" })
-    assert.equal sql.sql, "row_number() over () as \"xyz\""
+    assert.equal sql.sql, "(row_number() over ()) as \"xyz\""
 
   describe "compiles froms", ->
     it 'compiles table', ->
@@ -538,6 +538,21 @@ describe "JsonqlCompiler", ->
         orderBy = [{ expr: { type: "field", tableAlias: "abc", column: "x" }, direction: "asc" }] 
         expr = { type: "op", op: "array_agg", exprs: [@a], orderBy: orderBy }
         @testExpr(expr, "array_agg(? order by a_abc.X asc)", [1], { abc: "abc" })
+
+      it 'aggregate over with partitionBy', ->
+        over = { partitionBy: [{ type: "field", tableAlias: "abc", column: "x" }] }
+        expr = { type: "op", op: "row_number", exprs: [], over: over }
+        @testExpr(expr, "(row_number() over (partition by a_abc.X))", [], { abc: "def" })
+
+      it 'aggregate over with orderBy', ->
+        over = { orderBy: [ { expr: { type: "field", tableAlias: "abc", column: "x" }, direction: "asc" }] }
+        expr = { type: "op", op: "row_number", exprs: [], over: over }
+        @testExpr(expr, "(row_number() over ( order by a_abc.X asc))", [], { abc: "def" })
+
+      it 'aggregate over', ->
+        over = { }
+        expr = { type: "op", op: "row_number", exprs: [], over: over }
+        @testExpr(expr, "(row_number() over ())", [])
 
       it "creates exists", ->
         query = { 
