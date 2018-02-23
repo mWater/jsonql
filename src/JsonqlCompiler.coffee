@@ -364,6 +364,7 @@ module.exports = class JsonqlCompiler
       "nullif"
       "log"
       "ln"
+      "unnest"
     ]
 
     switch expr.op

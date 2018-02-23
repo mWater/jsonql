@@ -531,6 +531,7 @@ describe "JsonqlCompiler", ->
         @testExpr({ type: "op", op: "varp", exprs: [@a] }, "varp(?)", [1])
         @testExpr({ type: "op", op: "count", exprs: [] }, "count(*)", [])
         @testExpr({ type: "op", op: "count", modifier: "distinct", exprs: [@a] }, "count(distinct ?)", [1])
+        @testExpr({ type: "op", op: "unnest", exprs: [@a] }, "unnest(?)", [1])
         assert.throws () =>
           @testExpr({ type: "op", op: "xyz", exprs: [@a] }, "xyz(?)", [1])
 
