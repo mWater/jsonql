@@ -497,10 +497,11 @@ describe "JsonqlCompiler", ->
       it '||', ->
         @testExpr({ type: "op", op: "||", exprs: [@a, @b, @c] }, "(? || ? || ?)", [1, 2, 3])
 
-      it '~ ~* like', ->
+      it '~ ~* like ilike', ->
         @testExpr({ type: "op", op: "~", exprs: [@a, @b] }, "(? ~ ?)", [1, 2])
         @testExpr({ type: "op", op: "~*", exprs: [@a, @b] }, "(? ~* ?)", [1, 2])
         @testExpr({ type: "op", op: "like", exprs: [@a, @b] }, "(? like ?)", [1, 2])
+        @testExpr({ type: "op", op: "ilike", exprs: [@a, @b] }, "(? ilike ?)", [1, 2])
 
       it '::text', ->
         @testExpr({ type: "op", op: "::text", exprs: [@a] }, "(?::text)", [1])   
