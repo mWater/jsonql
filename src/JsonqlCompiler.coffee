@@ -431,8 +431,8 @@ module.exports = class JsonqlCompiler
           .append(@compileExpr(expr.exprs[0], aliases, ctes))
           .append(")")
       else
-        # Whitelist known functions and all PostGIS and CartoDb
-        if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/) or expr.op.match(/^CDB_[a-zA-z]+$/)
+        # Whitelist known functions and all PostGIS and CartoDb and mwater
+        if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/) or expr.op.match(/^CDB_[a-zA-z]+$/) or expr.op.match(/^mwater_[a-zA-z_]+$/)
           inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases, ctes)), ", ")
 
           # Handle special case of count(*)
