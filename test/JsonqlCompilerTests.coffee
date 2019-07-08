@@ -572,6 +572,9 @@ describe "JsonqlCompiler", ->
       it 'interval', ->
         @testExpr({ type: "op", op: "interval", exprs: [@str] }, "(interval ?)", ["xyz"])
 
+      it 'at time zome', ->
+        @testExpr({ type: "op", op: "at time zone", exprs: [{ type: "op", op: "now", exprs: [] }, @str] }, "(now() at time zone ?)", ["xyz"])
+
     describe "scalar", ->
       it "simple scalar", ->
         @testExpr({ type: "scalar", expr: @a, from: { type: "table", table: "abc", alias: "abc1" } }, '(select ? from ABC as "a_abc1")', [1])

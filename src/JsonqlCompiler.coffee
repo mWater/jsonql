@@ -365,6 +365,7 @@ module.exports = class JsonqlCompiler
       "log"
       "ln"
       "unnest"
+      "now"
     ]
 
     switch expr.op
@@ -429,6 +430,12 @@ module.exports = class JsonqlCompiler
       when "interval"
         return new SqlFragment("(interval ")
           .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(")")
+      when "at time zone"
+        return new SqlFragment("(")
+          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(" at time zone ")
+          .append(@compileExpr(expr.exprs[1], aliases, ctes))
           .append(")")
       else
         # Whitelist known functions and all PostGIS and CartoDb and mwater
