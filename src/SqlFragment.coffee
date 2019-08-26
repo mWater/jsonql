@@ -44,12 +44,7 @@ module.exports = class SqlFragment
         return "array[" + _.map(val, escapeLiteral).join(',') + "]"
 
       if typeof(val) == "object"
-        typeModifier = "::json"
-
-        # ST_GeomFromGeoJSON accepts json as string and does not need to be casted to json 
-        if val.type == "Polygon"
-          typeModifier = ""
-        return "(" + pgescape.literal(JSON.stringify(val)) + typeModifier + ")"
+        return "(" + pgescape.literal(JSON.stringify(val)) + "::json)"
 
       throw new Error("Unsupported literal value: " + val)
 
