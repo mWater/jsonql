@@ -9,11 +9,21 @@
   },
   "repository": "git@github.com:mWater/jsonql.git",
   "scripts": {
-    "test": "mocha -R spec --compilers coffee:coffee-script/register test/*Tests.coffee",
-    "prepublish": "gulp"
+    "test": "node_modules/build-library/test-cli",
+    "test-browser": "node_modules/build-library/test-browser",
+    "watch": "node_modules/build-library/watch",
+    "build": "node_modules/build-library/build",
+    "storybook": "gulp prepare_storybook && start-storybook -s . -p 6009",
+    "build-storybook": "build-storybook"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test"
+    }
   },
   "author": "Clayton Grassick",
   "license": "LGPL-3.0",
+  "types": "index.d.ts",
   "dependencies": {
     "js-yaml": "^3.3.1",
     "lodash": "^3.9.3",
@@ -21,16 +31,10 @@
     "pg-escape": "^0.1.0"
   },
   "devDependencies": {
-    "browserify": "^10.2.4",
+    "build-library": "github:mWater/build-library",
     "canonical-json": "0.0.4",
     "chai": "^2.0.0",
-    "coffee-script": "^1.9.3",
-    "coffeeify": "^1.1.0",
-    "glob": "^4.3.5",
-    "gulp": "git://github.com/gulpjs/gulp.git#4.0",
-    "gulp-coffee": "^2.3.1",
-    "gulp-util": "^3.0.3",
-    "mocha": "^2.2.5",
-    "vinyl-source-stream": "^1.0.0"
+    "husky": "^2.3.0",
+    "mocha": "^2.2.5"
   }
 }
