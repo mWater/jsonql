@@ -1,5 +1,8 @@
 /** Fragment of SQL that has sql (text) and params (array) */
 export default class SqlFragment {
+  sql: string
+  params: any[]
+  
   constructor(sql: string, params?: any[])
 
   /** Append a string (just sql), [sql, params], SqlFragment or plain object (has sql and params) */
