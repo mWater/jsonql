@@ -16,6 +16,8 @@ export interface JsonQLQuery {
   orderBy?: any // TODO
   groupBy?: any // TODO
   limit?: number
+  /** Optional offset in rows */
+  offset?: number
 }
 
 export interface JsonQLExpr {
