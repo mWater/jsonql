@@ -13,11 +13,19 @@ export interface JsonQLQuery {
   selects: JsonQLSelect[]
   from: JsonQLFrom
   where?: JsonQLExpr
-  orderBy?: any // TODO
-  groupBy?: any // TODO
+  /** groupBy: array of ordinals (1 based) or expressions (optional) */
+  groupBy?: (number | JsonQLExpr)[]
+  /** orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional) */
+  orderBy?: ({ ordinal: number, direction?: "asc" | "desc", nulls?: "last" | "first" } | { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" })[]
+
+  /** Limit number of rows */
   limit?: number
   /** Optional offset in rows */
   offset?: number
+  distinct?: boolean
+
+  /** withs: common table expressions (optional). array of { query:, alias: } */
+  withs?: { query: JsonQLQuery, alias: string }[]
 }
 
 export interface JsonQLExpr {
