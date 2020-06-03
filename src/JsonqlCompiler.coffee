@@ -368,6 +368,8 @@ module.exports = class JsonqlCompiler
       "now"
       "split_part"
       "chr"
+      "least"
+      "greatest"
     ]
 
     switch expr.op
