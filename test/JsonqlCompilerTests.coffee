@@ -381,6 +381,17 @@ describe "JsonqlCompiler", ->
       # Maps alias to table
       assert.deepEqual aliases, { "abc1": "abc", "def1": "def" }
 
+    it 'compiles cross join', ->
+      aliases = {}
+      result = @compiler.compileFrom({
+        type: "join"
+        left: { type: "table", table: "abc", alias: "abc1" }
+        right: { type: "table", table: "def", alias: "def1" }
+        kind: "cross"
+      }, aliases)
+      assert.equal result.sql, '(ABC as "a_abc1" cross join DEF as "a_def1")'
+      assert.deepEqual result.params, []
+
     it 'prevents duplicate aliases', ->
       assert.throws () =>
         @compiler.compileFrom({

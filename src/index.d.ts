@@ -40,9 +40,9 @@ export interface JsonQLJoinFrom {
   type: "join", 
   left: JsonQLFrom 
   right: JsonQLFrom
-  kind: "inner" | "left" | "right"
+  kind: "inner" | "left" | "right" | "full" | "cross"
   /** Expression to join on */
-  on: JsonQLExpr
+  on?: JsonQLExpr
 }
 
 export interface JsonQLTableFrom {

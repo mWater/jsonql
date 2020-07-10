@@ -179,20 +179,27 @@ module.exports = class JsonqlCompiler
         _.extend(aliases, left.aliases)
         _.extend(aliases, right.aliases)
 
+        # Ensure that on is present for non-cross
+        if from.kind != "cross" and not from.on?
+          throw new Error("Missing on clause for non-cross join")
+          
         # Compile on
-        onSql = @compileExpr(from.on, aliases, ctes)
+        onSql = if from.on then @compileExpr(from.on, aliases, ctes)
 
-        if from.kind not in ['inner', 'left', 'right']
+        if from.kind not in ['inner', 'left', 'right', 'full', 'cross']
           throw new Error("Unsupported join kind #{from.kind}")
 
         # Combine
-        return new SqlFragment("(")
+        frag = new SqlFragment("(")
             .append(left)
             .append(" " + from.kind + " join ")
             .append(right)
-            .append(" on ")
-            .append(onSql)
-            .append(")")
+        if onSql
+          frag.append(" on ").append(onSql)
+        
+        frag.append(")")
+
+        return frag
 
       when "subquery"
         # Validate alias
