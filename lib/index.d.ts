@@ -70,3 +70,20 @@ export interface JsonQLSelect {
   expr: JsonQLExpr
   alias: string
 }
+
+/** Scalar subquery */
+export interface JsonQLScalar {
+  type: "scalar",
+  expr: JsonQLExpr
+  where?: JsonQLExpr
+  from: JsonQLFrom
+
+  /** orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional) */
+  orderBy?: ({ ordinal: number, direction?: "asc" | "desc", nulls?: "last" | "first" } | { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" })[]
+
+  /** Limit number of rows */
+  limit?: number
+
+  /** withs: common table expressions (optional). array of { query:, alias: } */
+  withs?: { query: JsonQLQuery, alias: string }[]
+}
