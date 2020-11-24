@@ -84,7 +84,7 @@ module.exports = class JsonqlCompiler
       frag.append(from)
 
     # Add where
-    if query.where
+    if query.where?
       where = @compileExpr(query.where, aliases, ctes)
       if not where.isEmpty()
         frag.append(" where ")
@@ -524,7 +524,7 @@ module.exports = class JsonqlCompiler
     frag.append(from)
 
     # Add where
-    if query.where
+    if query.where?
       where = @compileExpr(query.where, aliases, ctes)
       if not where.isEmpty()
         frag.append(" where ")
