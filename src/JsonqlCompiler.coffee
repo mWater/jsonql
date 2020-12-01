@@ -514,14 +514,18 @@ module.exports = class JsonqlCompiler
     frag.append('select ')
 
     # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    from = @compileFrom(query.from, aliases, ctes)
+    if query.from
+      from = @compileFrom(query.from, aliases, ctes)
+    else
+      from = null
 
     # Compile single select expression
     frag.append(@compileExpr(query.expr, aliases, ctes))
 
     # Add from
-    frag.append(" from ")
-    frag.append(from)
+    if from
+      frag.append(" from ")
+      frag.append(from)
 
     # Add where
     if query.where?

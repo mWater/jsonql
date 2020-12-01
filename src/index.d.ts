@@ -76,7 +76,7 @@ export interface JsonQLScalar {
   type: "scalar",
   expr: JsonQLExpr
   where?: JsonQLExpr
-  from: JsonQLFrom
+  from?: JsonQLFrom
 
   /** orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional) */
   orderBy?: ({ ordinal: number, direction?: "asc" | "desc", nulls?: "last" | "first" } | { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" })[]
