@@ -284,11 +284,11 @@ module.exports = class JsonqlCompiler
 
     # Literals
     if typeof(expr) in ["number", "string", "boolean"]
-      return new SqlFragment("?", [expr])
+      return @compileLiteral(expr)
 
     switch expr.type
       when "literal"
-        return new SqlFragment("?", [expr.value])
+        return @compileLiteral(expr.value)
       when "op"
         return @compileOpExpr(expr, aliases, ctes)
       when "field"
@@ -582,6 +582,18 @@ module.exports = class JsonqlCompiler
   validateAlias: (alias) ->
     if not alias.match(/^[_a-zA-Z][a-zA-Z_0-9. :]*$/)
       throw new Error("Invalid alias '#{alias}'")
+
+  compileLiteral: (value) ->
+    # Postgres gives errors if the parameter type is unknown at times. e.g. sum(?) fails.
+    # To avoid, always cast value
+    if typeof(value) == "number"
+      return new SqlFragment("(?::numeric)", [value])
+    if typeof(value) == "string"
+      return new SqlFragment("(?::text)", [value])
+    if typeof(value) == "boolean"
+      return new SqlFragment("(?::boolean)", [value])
+
+    return new SqlFragment("?", [value])
 
 isInt = (x) ->
   return typeof(x)=='number' and (x%1) == 0
