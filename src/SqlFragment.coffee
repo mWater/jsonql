@@ -1,5 +1,4 @@
 _ = require 'lodash'
-pgescape = require 'pg-escape'
 
 # Fragment of SQL that has sql (text) and params (array)
 module.exports = class SqlFragment 
@@ -32,7 +31,7 @@ module.exports = class SqlFragment
         return "null"
 
       if typeof(val) == "string"
-        return pgescape.literal(val)
+        return escapeString(val)
 
       if typeof(val) == "number"
         return "" + val
@@ -44,7 +43,7 @@ module.exports = class SqlFragment
         return "array[" + _.map(val, escapeLiteral).join(',') + "]"
 
       if typeof(val) == "object"
-        return "(" + pgescape.literal(JSON.stringify(val)) + "::json)"
+        return "(" + escapeString(JSON.stringify(val)) + "::json)"
 
       throw new Error("Unsupported literal value: " + val)
 
@@ -62,3 +61,10 @@ module.exports = class SqlFragment
 
     return sql
 
+escapeString = (val) ->
+  backslash = ~val.indexOf('\\')
+  prefix = if backslash then 'E' else ''
+  val = val.replace(/'/g, '\'\'')
+  val = val.replace(/\\/g, '\\\\')
+  return prefix + '\'' + val + '\''
+  
