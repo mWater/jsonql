@@ -44,7 +44,7 @@ export interface JsonQLSelectQuery {
 }
 
 /** JsonQL expression. Can be null */
-export type JsonQLExpr = JsonQLLiteral | JsonQLOp | JsonQLCase | JsonQLScalar | JsonQLField | JsonQLToken | null
+export type JsonQLExpr = JsonQLLiteral | JsonQLOp | JsonQLCase | JsonQLScalar | JsonQLField | JsonQLToken | null | number | string | boolean
 
 /** Literal value */
 export interface JsonQLLiteral {
