@@ -51,7 +51,8 @@ export interface JsonQLLiteral {
 export interface JsonQLField {
   type: "field"
   tableAlias: string
-  column: string
+  /** If not present, use the entire row */
+  column?: string
 }
 
 /**
