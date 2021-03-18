@@ -2,11 +2,6 @@ export { default as SqlFragment } from './SqlFragment'
 export { default as JsonqlCompiler } from './JsonqlCompiler'
 export { default as SchemaMap } from './SchemaMap'
 
-export interface JsonQL {
-  type: string
-  [other: string]: any
-}
-
 /** Takes a series of unions */
 export interface JsonQLUnion {
   type: "union"
