@@ -87,12 +87,12 @@ export interface JsonQLOp {
   modifier?: "any" | "all" | "distinct"
   
   /** array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc) */
-  orderBy?: { expr: JsonQLExpr, direction: "asc" | "desc" }[]
+  orderBy?: { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" }[]
 
   /** For window functions */
   over?: {
     partitionBy?: JsonQLExpr[]
-    orderBy?: { expr: JsonQLExpr, direction: "asc" | "desc", nulls?: "last" | "first" }[]
+    orderBy?: { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" }[]
   }
 }
 
