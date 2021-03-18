@@ -26,7 +26,7 @@ export type JsonQLQuery = JsonQLSelectQuery | JsonQLUnion | JsonQLUnionAll
 export interface JsonQLSelectQuery {
   type: "query"
   selects: JsonQLSelect[]
-  from: JsonQLFrom
+  from?: JsonQLFrom
   where?: JsonQLExpr
   /** groupBy: array of ordinals (1 based) or expressions (optional) */
   groupBy?: (number | JsonQLExpr)[]
