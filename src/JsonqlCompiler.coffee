@@ -377,6 +377,8 @@ module.exports = class JsonqlCompiler
       "chr"
       "least"
       "greatest"
+      "bool_or"
+      "bool_and"
     ]
 
     switch expr.op
