@@ -1,7 +1,6 @@
 export { default as SqlFragment } from './SqlFragment'
 export { default as JsonqlCompiler } from './JsonqlCompiler'
 export { default as SchemaMap } from './SchemaMap'
-// export { default as QueryOptimizer } from './QueryOptimizer'
 
 export interface JsonQL {
   type: string
@@ -28,10 +27,70 @@ export interface JsonQLQuery {
   withs?: { query: JsonQLQuery, alias: string }[]
 }
 
-export interface JsonQLExpr {
-  // TODO
-  type: string
-  [other: string]: any
+/** JsonQL expression. Can be null */
+export type JsonQLExpr = JsonQLLiteral | JsonQLOp | JsonQLCase | JsonQLScalar | JsonQLField | JsonQLToken | null
+
+/** Literal value */
+export interface JsonQLLiteral {
+  type: "literal"
+  value: any
+}
+
+/** Field value. References a field of an aliased table */
+export interface JsonQLField {
+  type: "field"
+  tableAlias: string
+  column: string
+}
+
+/**
+ * Expression. Has op:
+ *
+ *  `>`, `<`, `<>`, `=`, `>=`, `<=`, 
+ *  `+`, `-`, `*`, `/`, `~`, `~*`, 
+ *  `like`, `and`, `or`, `not`, `is null`, `is not null`, `between`
+ *  `avg`, `min`, `max`, `row_number`, etc.
+ *  `exists`, `[]`, `array_agg`, etc
+ *
+ *  For count(*), use count with no expressions.
+ *
+ *  Has 
+ *  exprs: [expression]
+ *  modifier: "any", "all", "distinct" (optional)
+ *  orderBy: array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc)
+ *
+ *  Can also contain `over` for window functions. Both partitionBy and orderBy are optional
+ *  over: { partitionBy: [ list of expressions ], orderBy: [ list of { expr: expression, direction: "asc"/"desc", nulls: "last"/"first" (default is not set) } ]}
+ */
+export interface JsonQLOp {
+  type: "op"
+  op: string
+  exprs: JsonQLExpr[]
+
+  /** For = any etc */
+  modifier?: "any" | "all" | "distinct"
+  
+  /** array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc) */
+  orderBy?: { expr: JsonQLExpr, direction: "asc" | "desc" }
+
+  /** For window functions */
+  over?: {
+    partitionBy?: JsonQLExpr[]
+    orderBy?: { expr: JsonQLExpr, direction: "asc" | "desc", nulls?: "last" | "first" }
+  }
+}
+
+/** Case expression */
+export interface JsonQLCase {
+  type: "case"
+
+  /** optional input expression */
+  input?: JsonQLExpr
+
+  cases: { when: JsonQLExpr, then: JsonQLExpr }[]
+
+  /** optional else expression */
+  else?: JsonQLExpr
 }
 
 export type JsonQLFrom = JsonQLTableFrom | JsonQLJoinFrom | JsonQLSubqueryFrom | JsonQLSubexprFrom
@@ -86,4 +145,11 @@ export interface JsonQLScalar {
 
   /** withs: common table expressions (optional). array of { query:, alias: } */
   withs?: { query: JsonQLQuery, alias: string }[]
+}
+
+/** Special literal token, used for PostGIS, etc.
+ * Currently "!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!" */
+export interface JsonQLToken {
+  type: "token"
+  token: string
 }
