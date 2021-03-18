@@ -7,7 +7,23 @@ export interface JsonQL {
   [other: string]: any
 }
 
-export interface JsonQLQuery {
+/** Takes a series of unions */
+export interface JsonQLUnion {
+  type: "union"
+  queries: JsonQLQuery[]
+}
+
+/** Takes a series of unions */
+export interface JsonQLUnionAll {
+  type: "union all"
+  queries: JsonQLQuery[]
+}
+
+/** Simple query or union */
+export type JsonQLQuery = JsonQLSelectQuery | JsonQLUnion | JsonQLUnionAll
+
+/** Query with a single select at root */
+export interface JsonQLSelectQuery {
   type: "query"
   selects: JsonQLSelect[]
   from: JsonQLFrom
