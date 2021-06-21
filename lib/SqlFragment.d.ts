@@ -13,7 +13,7 @@ export default class SqlFragment {
 
   isEmpty(): boolean
 
-  static join(list: SqlFragment[], joiner: string): SqlFragment
+  static join(list: (SqlFragment | { sql: string, params: any[] })[], joiner: string): SqlFragment
     
   /** Make into sql with parameters inlined */
   toInline(): string
