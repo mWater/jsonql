@@ -9,11 +9,11 @@ export default class SqlFragment {
   append(val: string, params?: any[]): SqlFragment
   append(val: SqlFragment): SqlFragment
   append(val: [string, any[]]): SqlFragment
-  append(val: { sql: string, params: any[] }): SqlFragment
+  append(val: { sql: string, params?: any[] }): SqlFragment
 
   isEmpty(): boolean
 
-  static join(list: (SqlFragment | { sql: string, params: any[] })[], joiner: string): SqlFragment
+  static join(list: (SqlFragment | { sql: string, params?: any[] })[], joiner: string): SqlFragment
     
   /** Make into sql with parameters inlined */
   toInline(): string
