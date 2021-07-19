@@ -42,6 +42,9 @@ module.exports = class SqlFragment
       if _.isArray(val)
         return "array[" + _.map(val, escapeLiteral).join(',') + "]"
 
+      if val instanceof Date
+        return escapeString(val.toISOString())
+
       if typeof(val) == "object"
         return "(" + escapeString(JSON.stringify(val)) + "::json)"
 

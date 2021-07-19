@@ -20,6 +20,12 @@ describe "SqlFragment", ->
     sql = new SqlFragment("x=?", ["abc"]).toInline()
     assert.equal sql, "x='abc'"
 
+  it 'converts date to inline', ->
+    date = new Date()
+
+    sql = new SqlFragment("x=?", [date]).toInline()
+    assert.equal sql, "x='" + date.toISOString() + "'"
+
   it 'escapes \' to inline', ->
     sql = new SqlFragment("x=?", ["a'bc"]).toInline()
     assert.equal sql, "x='a''bc'"
