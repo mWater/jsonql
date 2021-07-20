@@ -1,6 +1,3 @@
-// TODO: This file was created by bulk-decaffeinate.
-// Sanity-check the conversion and remove this comment.
-let QueryOptimizer
 import _ from "lodash"
 
 /*
@@ -28,7 +25,7 @@ See the tests for examples of all three re-writings. The speed difference is 100
 
 */
 
-export default QueryOptimizer = class QueryOptimizer {
+export default class QueryOptimizer {
   constructor() {
     this.aliasNum = 0
   }
@@ -725,7 +722,7 @@ export default QueryOptimizer = class QueryOptimizer {
     this.aliasNum += 1
     return alias
   }
-}
+};
 
 // replaceFrag: (frag, fromFrag, toFrag) ->
 //   if not frag or not frag.type

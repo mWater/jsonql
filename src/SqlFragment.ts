@@ -1,10 +1,7 @@
-// TODO: This file was created by bulk-decaffeinate.
-// Sanity-check the conversion and remove this comment.
-let SqlFragment
 import _ from "lodash"
 
 // Fragment of SQL that has sql (text) and params (array)
-export default SqlFragment = class SqlFragment {
+export default class SqlFragment {
   constructor(sql: any, params: any) {
     this.sql = sql || ""
     this.params = params || []
@@ -84,7 +81,7 @@ export default SqlFragment = class SqlFragment {
 
     return sql
   }
-}
+};
 
 function escapeString(val: any) {
   const backslash = ~val.indexOf("\\")

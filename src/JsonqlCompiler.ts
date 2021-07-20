@@ -1,12 +1,9 @@
-// TODO: This file was created by bulk-decaffeinate.
-// Sanity-check the conversion and remove this comment.
-let JsonqlCompiler
 import _ from "lodash"
 import SqlFragment from "./SqlFragment"
 import QueryOptimizer from "./QueryOptimizer"
 
 // Compiles jsonql to sql
-export default JsonqlCompiler = class JsonqlCompiler {
+export default class JsonqlCompiler {
   constructor(schemaMap: any, optimizeQueries = false) {
     this.schemaMap = schemaMap
     this.nextId = 1
@@ -735,7 +732,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
       throw new Error(`Invalid alias '${alias}'`)
     }
   }
-}
+};
 
 function isInt(x: any) {
   return typeof x === "number" && x % 1 === 0

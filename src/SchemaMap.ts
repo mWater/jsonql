@@ -1,10 +1,7 @@
-// TODO: This file was created by bulk-decaffeinate.
-// Sanity-check the conversion and remove this comment.
-let SchemaMap
 import SqlFragment from "./SqlFragment"
 
 // Maps tables and columns to a secure sql fragment. Base class is simple passthrough
-export default SchemaMap = class SchemaMap {
+export default class SchemaMap {
   // Maps a table to a secured, sanitized version
   mapTable(table: any) {
     return new SqlFragment(table)
@@ -19,4 +16,4 @@ export default SchemaMap = class SchemaMap {
   mapTableAlias(alias: any) {
     return alias
   }
-}
+};
