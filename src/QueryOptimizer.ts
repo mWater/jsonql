@@ -33,7 +33,7 @@ export default QueryOptimizer = class QueryOptimizer {
     this.aliasNum = 0
   }
 
-  debugQuery(query) {
+  debugQuery(query: any) {
     const SchemaMap = require("./SchemaMap")
     const JsonqlCompiler = require("./JsonqlCompiler")
 
@@ -49,7 +49,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Run rewriteScalar query repeatedly until no more changes
-  optimizeQuery(query, debug = false) {
+  optimizeQuery(query: any, debug = false) {
     if (debug) {
       console.log("================== BEFORE OPT ================")
       this.debugQuery(query)
@@ -73,9 +73,9 @@ export default QueryOptimizer = class QueryOptimizer {
     throw new Error(`Unable to optimize query (infinite loop): ${JSON.stringify(query)}`)
   }
 
-  rewriteScalar(query) {
+  rewriteScalar(query: any) {
     // First optimize any inner queries
-    let opt1Alias, opt1Query, opt1Selects, opt2Alias, opt2From, opt2Query, opt2Selects, outerQuery
+    let opt1Alias: any, opt1Query, opt1Selects, opt2Alias: any, opt2From, opt2Query, opt2Selects, outerQuery
     query = this.optimizeInnerQueries(query)
 
     // Find scalar to optimize
@@ -101,10 +101,10 @@ export default QueryOptimizer = class QueryOptimizer {
     let fields = this.extractFields(query)
 
     // Filter fields to ones that reference from clause
-    fields = _.filter(fields, (f) => fromAliases.includes(f.tableAlias))
+    fields = _.filter(fields, (f: any) => fromAliases.includes(f.tableAlias))
 
     // Unique fields
-    fields = _.uniq(fields, (f) => `${f.tableAlias}::${f.column}`)
+    fields = _.uniq(fields, (f: any) => `${f.tableAlias}::${f.column}`)
 
     // Split where into ands
     let wheres = []
@@ -119,7 +119,7 @@ export default QueryOptimizer = class QueryOptimizer {
     let innerWhere = {
       type: "op",
       op: "and",
-      exprs: _.filter(wheres, (where) => {
+      exprs: _.filter(wheres, (where: any) => {
         return this.findScalar(where) !== scalar
       })
     }
@@ -127,7 +127,7 @@ export default QueryOptimizer = class QueryOptimizer {
     let outerWhere = {
       type: "op",
       op: "and",
-      exprs: _.filter(wheres, (where) => {
+      exprs: _.filter(wheres, (where: any) => {
         return this.findScalar(where) === scalar
       })
     }
@@ -142,7 +142,7 @@ export default QueryOptimizer = class QueryOptimizer {
     }
 
     // Remaps over clause in select
-    const remapOver = (over, alias) => {
+    const remapOver = (over: any, alias: any) => {
       if (!over) {
         return over
       }
@@ -150,20 +150,20 @@ export default QueryOptimizer = class QueryOptimizer {
       return _.omit(
         {
           partitionBy: over.partitionBy
-            ? _.map(over.partitionBy, (pb) => this.remapFields(pb, fields, scalar, alias))
+            ? _.map(over.partitionBy, (pb: any) => this.remapFields(pb, fields, scalar, alias))
             : undefined,
           orderBy: over.orderBy
-            ? _.map(over.orderBy, (ob) => _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) }))
+            ? _.map(over.orderBy, (ob: any) => _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) }))
             : undefined
         },
         _.isUndefined
-      )
+      );
     }
 
     // Remaps selects for outer query, mapping fields in expr and over clauses
-    const remapSelects = (selects, alias) => {
+    const remapSelects = (selects: any, alias: any) => {
       // Re-write query selects to use new opt1 query
-      return _.map(selects, (select) => {
+      return _.map(selects, (select: any) => {
         // Get rid of undefined values
         return _.omit(
           {
@@ -174,13 +174,13 @@ export default QueryOptimizer = class QueryOptimizer {
           },
           _.isUndefined
         )
-      })
+      });
     }
 
     // If simple non-aggregate
     if (!this.isAggr(scalar.expr) && !scalar.limit) {
       // Create new selects for opt1 query with all fields + scalar expression
-      opt1Selects = _.map(fields, (field) => {
+      opt1Selects = _.map(fields, (field: any) => {
         return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
       })
       opt1Selects.push({
@@ -221,7 +221,7 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt1Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt1Alias),
-        orderBy: _.map(query.orderBy, (orderBy) => {
+        orderBy: _.map(query.orderBy, (orderBy: any) => {
           if (!orderBy.expr) {
             return orderBy
           }
@@ -231,7 +231,7 @@ export default QueryOptimizer = class QueryOptimizer {
       return outerQuery
     } else if (!scalar.limit) {
       // Create new selects for opt1 query with all fields + row number
-      opt1Selects = _.map(fields, (field) => {
+      opt1Selects = _.map(fields, (field: any) => {
         return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
       })
       opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
@@ -253,7 +253,7 @@ export default QueryOptimizer = class QueryOptimizer {
       // Create new selects for opt2 query with row number + all fields + scalar expression
       opt2Selects = [{ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "rn" }, alias: "rn" }]
       opt2Selects = opt2Selects.concat(
-        _.map(fields, (field) => {
+        _.map(fields, (field: any) => {
           return {
             type: "select",
             expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` },
@@ -295,7 +295,7 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt2Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt2Alias),
-        orderBy: _.map(query.orderBy, (orderBy) => {
+        orderBy: _.map(query.orderBy, (orderBy: any) => {
           if (!orderBy.expr) {
             return orderBy
           }
@@ -308,7 +308,7 @@ export default QueryOptimizer = class QueryOptimizer {
       // Limit scalar
     } else {
       // Create new selects for opt1 query with all fields + row number
-      opt1Selects = _.map(fields, (field) => {
+      opt1Selects = _.map(fields, (field: any) => {
         return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
       })
       opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
@@ -328,7 +328,7 @@ export default QueryOptimizer = class QueryOptimizer {
       opt1Alias = this.createAlias()
 
       // Create new selects for opt2 query with all fields + scalar expression + ordered row number over inner row number
-      opt2Selects = _.map(fields, (field) => {
+      opt2Selects = _.map(fields, (field: any) => {
         return {
           type: "select",
           expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` },
@@ -345,7 +345,7 @@ export default QueryOptimizer = class QueryOptimizer {
         expr: { type: "op", op: "row_number", exprs: [] },
         over: {
           partitionBy: [{ type: "field", tableAlias: opt1Alias, column: "rn" }],
-          orderBy: _.map(scalar.orderBy, (ob) => {
+          orderBy: _.map(scalar.orderBy, (ob: any) => {
             if (ob.expr) {
               return _.extend({}, ob, { expr: this.changeAlias(ob.expr, oldScalarAlias, newScalarAlias) })
             }
@@ -373,7 +373,7 @@ export default QueryOptimizer = class QueryOptimizer {
       // Create alias for opt2 query
       opt2Alias = this.createAlias()
 
-      const opt3Selects = _.map(fields, (field) => {
+      const opt3Selects = _.map(fields, (field: any) => {
         return {
           type: "select",
           expr: { type: "field", tableAlias: opt2Alias, column: `opt_${field.tableAlias}_${field.column}` },
@@ -417,7 +417,7 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt3Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt3Alias),
-        orderBy: _.map(query.orderBy, (orderBy) => {
+        orderBy: _.map(query.orderBy, (orderBy: any) => {
           if (!orderBy.expr) {
             return orderBy
           }
@@ -429,8 +429,8 @@ export default QueryOptimizer = class QueryOptimizer {
     }
   }
 
-  optimizeInnerQueries(query) {
-    var optimizeFrom = (from) => {
+  optimizeInnerQueries(query: any) {
+    var optimizeFrom = (from: any) => {
       switch (from.type) {
         case "table":
         case "subexpr":
@@ -453,7 +453,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Find a scalar in where, selects or order by or expression
-  findScalar(frag) {
+  findScalar(frag: any) {
     if (!frag || !frag.type) {
       return null
     }
@@ -505,7 +505,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Change a specific alias to another one
-  changeAlias(frag, fromAlias, toAlias) {
+  changeAlias(frag: any, fromAlias: any, toAlias: any) {
     if (!frag || !frag.type) {
       return frag
     }
@@ -519,10 +519,10 @@ export default QueryOptimizer = class QueryOptimizer {
         return frag
       case "op":
         var newFrag = _.extend({}, frag, {
-          exprs: _.map(frag.exprs, (ex) => this.changeAlias(ex, fromAlias, toAlias))
+          exprs: _.map(frag.exprs, (ex: any) => this.changeAlias(ex, fromAlias, toAlias))
         })
         if (frag.orderBy) {
-          newFrag.orderBy = _.map(frag.orderBy, (ob) => {
+          newFrag.orderBy = _.map(frag.orderBy, (ob: any) => {
             if (ob.expr) {
               return _.extend({}, ob, { expr: this.changeAlias(ob.expr, fromAlias, toAlias) })
             }
@@ -533,14 +533,14 @@ export default QueryOptimizer = class QueryOptimizer {
       case "case":
         return _.extend({}, frag, {
           input: this.changeAlias(frag.input, fromAlias, toAlias),
-          cases: _.map(frag.cases, (cs) => {
+          cases: _.map(frag.cases, (cs: any) => {
             return {
               when: this.changeAlias(cs.when, fromAlias, toAlias),
               then: this.changeAlias(cs.then, fromAlias, toAlias)
             }
           }),
           else: this.changeAlias(frag.else, fromAlias, toAlias)
-        })
+        });
       case "scalar":
         newFrag = _.extend({}, frag, {
           expr: this.changeAlias(frag.expr, fromAlias, toAlias),
@@ -549,7 +549,7 @@ export default QueryOptimizer = class QueryOptimizer {
           orderBy: this.changeAlias(frag.orderBy, fromAlias, toAlias)
         })
         if (frag.orderBy) {
-          newFrag.orderBy = _.map(frag.orderBy, (ob) => {
+          newFrag.orderBy = _.map(frag.orderBy, (ob: any) => {
             if (ob.expr) {
               return _.extend({}, ob, { expr: this.changeAlias(ob.expr, fromAlias, toAlias) })
             }
@@ -578,7 +578,7 @@ export default QueryOptimizer = class QueryOptimizer {
     }
   }
 
-  extractFromAliases(from) {
+  extractFromAliases(from: any) {
     switch (from.type) {
       case "table":
       case "subquery":
@@ -594,28 +594,28 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Extract all jsonql field expressions from a jsonql fragment
-  extractFields = (frag) => {
+  extractFields = (frag: any) => {
     if (!frag || !frag.type) {
       return []
     }
 
     switch (frag.type) {
       case "query":
-        return _.flatten(_.map(frag.selects, (select) => this.extractFields(select.expr)))
+        return _.flatten(_.map(frag.selects, (select: any) => this.extractFields(select.expr)))
           .concat(this.extractFields(frag.where))
-          .concat(_.flatten(_.map(frag.orderBy, (orderBy) => this.extractFields(orderBy.expr))))
+          .concat(_.flatten(_.map(frag.orderBy, (orderBy: any) => this.extractFields(orderBy.expr))));
       case "field":
         return [frag]
       case "op":
         return _.flatten(_.map(frag.exprs, this.extractFields))
       case "case":
         return this.extractFields(frag.input)
-          .concat(_.flatten(_.map(frag.cases, (cs) => this.extractFields(cs.when).concat(this.extractFields(cs.then)))))
-          .concat(this.extractFields(frag.else))
+          .concat(_.flatten(_.map(frag.cases, (cs: any) => this.extractFields(cs.when).concat(this.extractFields(cs.then)))))
+          .concat(this.extractFields(frag.else));
       case "scalar":
         return this.extractFields(frag.frag)
           .concat(this.extractFields(frag.where))
-          .concat(_.map(frag.orderBy, (ob) => this.extractFields(ob.frag)))
+          .concat(_.map(frag.orderBy, (ob: any) => this.extractFields(ob.frag)));
       case "literal":
         return []
       case "token":
@@ -626,7 +626,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Determine if expression is aggregate
-  isAggr = (expr) => {
+  isAggr = (expr: any) => {
     if (!expr || !expr.type) {
       return false
     }
@@ -638,9 +638,9 @@ export default QueryOptimizer = class QueryOptimizer {
         if (["sum", "min", "max", "avg", "count", "stdev", "stdevp", "var", "varp", "array_agg"].includes(expr.op)) {
           return true
         }
-        return _.any(expr.exprs, (ex) => this.isAggr(ex))
+        return _.any(expr.exprs, (ex: any) => this.isAggr(ex));
       case "case":
-        return _.any(expr.cases, (cs) => this.isAggr(cs.then))
+        return _.any(expr.cases, (cs: any) => this.isAggr(cs.then));
       case "scalar":
         return false
       case "literal":
@@ -653,7 +653,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Remap fields a.b1 to format <tableAlias>.opt_a_b1
-  remapFields(frag, fields, scalar, tableAlias) {
+  remapFields(frag: any, fields: any, scalar: any, tableAlias: any) {
     if (!frag || !frag.type) {
       return frag
     }
@@ -669,19 +669,19 @@ export default QueryOptimizer = class QueryOptimizer {
         return frag
       case "op":
         return _.extend({}, frag, {
-          exprs: _.map(frag.exprs, (ex) => this.remapFields(ex, fields, scalar, tableAlias))
-        })
+          exprs: _.map(frag.exprs, (ex: any) => this.remapFields(ex, fields, scalar, tableAlias))
+        });
       case "case":
         return _.extend({}, frag, {
           input: this.remapFields(frag.input, fields, scalar, tableAlias),
-          cases: _.map(frag.cases, (cs) => {
+          cases: _.map(frag.cases, (cs: any) => {
             return {
               when: this.remapFields(cs.when, fields, scalar, tableAlias),
               then: this.remapFields(cs.then, fields, scalar, tableAlias)
             }
           }),
           else: this.remapFields(frag.else, fields, scalar, tableAlias)
-        })
+        });
       case "scalar":
         if (scalar === frag) {
           return { type: "field", tableAlias, column: "expr" }
@@ -692,7 +692,7 @@ export default QueryOptimizer = class QueryOptimizer {
             where: this.remapFields(frag.where, fields, scalar, tableAlias)
           })
           if (frag.orderBy) {
-            newFrag.orderBy = _.map(frag.orderBy, (ob) => {
+            newFrag.orderBy = _.map(frag.orderBy, (ob: any) => {
               if (ob.expr) {
                 return _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, tableAlias) })
               }

@@ -5,13 +5,13 @@ import _ from "lodash"
 
 // Fragment of SQL that has sql (text) and params (array)
 export default SqlFragment = class SqlFragment {
-  constructor(sql, params) {
+  constructor(sql: any, params: any) {
     this.sql = sql || ""
     this.params = params || []
   }
 
   // Append a string (just sql), [sql, params], SqlFragment or plain object (has sql and params)
-  append(val, params) {
+  append(val: any, params: any) {
     if (_.isString(val)) {
       this.sql += val
       this.params = this.params.concat(params || [])
@@ -27,14 +27,14 @@ export default SqlFragment = class SqlFragment {
     return this.sql.length === 0
   }
 
-  static join(list, joiner) {
-    return new SqlFragment(_.map(list, (fr) => fr.sql).join(joiner), [].concat.apply([], _.pluck(list, "params")))
+  static join(list: any, joiner: any) {
+    return new SqlFragment(_.map(list, (fr: any) => fr.sql).join(joiner), [].concat.apply([], _.pluck(list, "params")));
   }
 
   // Make into sql with parameters inlined
   toInline() {
     // Escapes a literal value
-    function escapeLiteral(val) {
+    function escapeLiteral(val: any) {
       if (val === null) {
         return "null"
       }
@@ -74,7 +74,7 @@ export default SqlFragment = class SqlFragment {
     let n = 0
     // All the question marks not followed by | or &
     // ?| and ?& are jsonb operators (so is ?, but it can be replaced by one of the others)
-    const sql = this.sql.replace(/\?(?!\||&)/g, (str) => {
+    const sql = this.sql.replace(/\?(?!\||&)/g, (str: any) => {
       // Insert nth parameter
       // Check type
       const param = this.params[n]
@@ -86,7 +86,7 @@ export default SqlFragment = class SqlFragment {
   }
 }
 
-function escapeString(val) {
+function escapeString(val: any) {
   const backslash = ~val.indexOf("\\")
   const prefix = backslash ? "E" : ""
   val = val.replace(/'/g, "''")

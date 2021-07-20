@@ -4,7 +4,7 @@ import { assert } from "chai"
 import QueryOptimizer from "../src/QueryOptimizer"
 import canonical from "canonical-json"
 
-function compare(actual, expected) {
+function compare(actual: any, expected: any) {
   const strActual = canonical(actual)
   const strExpected = canonical(expected)
   if (strActual !== strExpected) {

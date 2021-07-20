@@ -7,7 +7,7 @@ import QueryOptimizer from "./QueryOptimizer"
 
 // Compiles jsonql to sql
 export default JsonqlCompiler = class JsonqlCompiler {
-  constructor(schemaMap, optimizeQueries = false) {
+  constructor(schemaMap: any, optimizeQueries = false) {
     this.schemaMap = schemaMap
     this.nextId = 1
 
@@ -19,26 +19,26 @@ export default JsonqlCompiler = class JsonqlCompiler {
   // for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
   // expression, so it already has a row selected.
   // ctes are aliases for common table expressions. They are a map of alias to true
-  compileQuery(query, aliases = {}, ctes = {}) {
+  compileQuery(query: any, aliases = {}, ctes = {}) {
     // If union, handle that
     let from
     if (query.type === "union") {
       return SqlFragment.join(
-        _.map(query.queries, (q) => {
+        _.map(query.queries, (q: any) => {
           return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
         }),
         " union "
-      )
+      );
     }
 
     // If union all, handle that
     if (query.type === "union all") {
       return SqlFragment.join(
-        _.map(query.queries, (q) => {
+        _.map(query.queries, (q: any) => {
           return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
         }),
         " union all "
-      )
+      );
     }
 
     // Optimize query first
@@ -89,7 +89,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
     }
 
     // Compile selects
-    const selects = _.map(query.selects, (s) => this.compileSelect(s, aliases, ctes))
+    const selects = _.map(query.selects, (s: any) => this.compileSelect(s, aliases, ctes))
 
     // Handle null select
     if (selects.length === 0) {
@@ -126,7 +126,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
 
       frag.append(
         SqlFragment.join(
-          _.map(query.groupBy, (groupBy) => {
+          _.map(query.groupBy, (groupBy: any) => {
             if (isInt(groupBy)) {
               return new SqlFragment(`${groupBy}`)
             }
@@ -165,7 +165,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
 
   // select is { expr: <expr>, alias: <string> }
   // aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
-  compileSelect(select, aliases, ctes = {}) {
+  compileSelect(select: any, aliases: any, ctes = {}) {
     // Add legacy over to expr
     let { expr } = select
     if (select.over) {
@@ -184,7 +184,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
 
   // Compiles table or join returning sql and modifying aliases
   // ctes are aliases for common table expressions. They are a map of alias to true
-  compileFrom(from, aliases = {}, ctes = {}) {
+  compileFrom(from: any, aliases = {}, ctes = {}) {
     // TODO check that alias is not repeated in from
     switch (from.type) {
       case "table":
@@ -259,7 +259,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
         var subquery = this.compileQuery(from.query, aliases, ctes)
 
         // Get list of fields of subquery
-        var fields = _.map(from.query.selects, (s) => s.alias)
+        var fields = _.map(from.query.selects, (s: any) => s.alias)
 
         // Record alias as true to allow any field to be queried
         aliases[from.alias] = true
@@ -292,7 +292,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
     }
   }
 
-  compileOrderBy(orderBy, aliases) {
+  compileOrderBy(orderBy: any, aliases: any) {
     const frag = new SqlFragment()
 
     if (!_.isArray(orderBy)) {
@@ -300,7 +300,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
     }
 
     if (
-      !_.all(orderBy, (o) => {
+      !_.all(orderBy, (o: any) => {
         if (!isInt(o.ordinal) && !o.expr) {
           return false
         }
@@ -314,7 +314,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
     if (orderBy.length > 0) {
       frag.append(" order by ").append(
         SqlFragment.join(
-          _.map(orderBy, (o) => {
+          _.map(orderBy, (o: any) => {
             let f
             if (_.isNumber(o.ordinal)) {
               f = new SqlFragment(`${o.ordinal}`)
@@ -338,7 +338,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
 
   // Compiles an expression
   // aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
-  compileExpr(expr, aliases, ctes = {}) {
+  compileExpr(expr: any, aliases: any, ctes = {}) {
     if (aliases == null) {
       throw new Error("Missing aliases")
     }
@@ -400,7 +400,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
   }
 
   // Compiles an op expression
-  compileOpExpr(expr, aliases, ctes = {}) {
+  compileOpExpr(expr: any, aliases: any, ctes = {}) {
     let inner
     const functions = [
       "avg",
@@ -501,10 +501,10 @@ export default JsonqlCompiler = class JsonqlCompiler {
       case "-":
       case "*":
       case "||":
-        var compiledExprs = _.map(expr.exprs, (e) => this.compileExpr(e, aliases, ctes))
+        var compiledExprs = _.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes))
 
         // Remove blanks
-        compiledExprs = _.filter(compiledExprs, (e) => !e.isEmpty())
+        compiledExprs = _.filter(compiledExprs, (e: any) => !e.isEmpty())
 
         if (compiledExprs.length === 0) {
           return new SqlFragment()
@@ -573,7 +573,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
           expr.op.match(/^mwater_[a-zA-z_]+$/)
         ) {
           inner = SqlFragment.join(
-            _.map(expr.exprs, (e) => this.compileExpr(e, aliases, ctes)),
+            _.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes)),
             ", "
           )
 
@@ -600,7 +600,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
               frag.append("partition by ")
               frag.append(
                 SqlFragment.join(
-                  _.map(expr.over.partitionBy, (pb) => this.compileExpr(pb, aliases, ctes)),
+                  _.map(expr.over.partitionBy, (pb: any) => this.compileExpr(pb, aliases, ctes)),
                   ", "
                 )
               )
@@ -619,7 +619,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
   }
 
   // Compile a scalar subquery made up of expr, from, where, order, limit, skip
-  compileScalar(query, aliases, ctes = {}) {
+  compileScalar(query: any, aliases: any, ctes = {}) {
     let from
     const frag = new SqlFragment("(")
 
@@ -704,7 +704,7 @@ export default JsonqlCompiler = class JsonqlCompiler {
     return frag
   }
 
-  compileCaseExpr(expr, aliases, ctes = {}) {
+  compileCaseExpr(expr: any, aliases: any, ctes = {}) {
     const frag = new SqlFragment("case ")
 
     if (expr.input != null) {
@@ -730,13 +730,13 @@ export default JsonqlCompiler = class JsonqlCompiler {
   }
 
   // Validate alias string. Throws if bad
-  validateAlias(alias) {
+  validateAlias(alias: any) {
     if (!alias.match(/^[_a-zA-Z][a-zA-Z_0-9. :]*$/)) {
       throw new Error(`Invalid alias '${alias}'`)
     }
   }
 }
 
-function isInt(x) {
+function isInt(x: any) {
   return typeof x === "number" && x % 1 === 0
 }

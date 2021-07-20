@@ -7,16 +7,16 @@ import JsonqlCompiler from "../src/JsonqlCompiler"
 
 // Capitalizes tables and columns and aliases
 class MockSchemaMap extends SchemaMap {
-  mapTable(table) {
+  mapTable(table: any) {
     return new SqlFragment(table.toUpperCase())
   }
 
   // Map a column reference of a table aliased as alias
-  mapColumn(table, column, alias) {
+  mapColumn(table: any, column: any, alias: any) {
     return new SqlFragment(alias + "." + column.toUpperCase())
   }
 
-  mapTableAlias(alias) {
+  mapTableAlias(alias: any) {
     return "a_" + alias
   }
 }
@@ -497,11 +497,11 @@ describe("JsonqlCompiler", function () {
       this.e = { type: "literal", value: 5 }
       this.str = { type: "literal", value: "xyz" }
 
-      return (this.testExpr = function (expr, sql, params, aliases = {}) {
+      return this.testExpr = function (expr: any, sql: any, params: any, aliases = {}) {
         const fr = this.compiler.compileExpr(expr, aliases)
         assert.equal(fr.sql, sql)
         return assert.deepEqual(fr.params, params)
-      })
+      };
     })
 
     it("literal", function () {
@@ -773,5 +773,5 @@ describe("JsonqlCompiler", function () {
         )
       })
     })
-  })
+  });
 })
