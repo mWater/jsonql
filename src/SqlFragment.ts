@@ -25,7 +25,7 @@ export default class SqlFragment {
   }
 
   static join(list: any, joiner: any) {
-    return new SqlFragment(_.map(list, (fr: any) => fr.sql).join(joiner), [].concat.apply([], _.pluck(list, "params")));
+    return new SqlFragment(_.map(list, (fr: any) => fr.sql).join(joiner), [].concat.apply([], _.pluck(list, "params")))
   }
 
   // Make into sql with parameters inlined
@@ -81,7 +81,7 @@ export default class SqlFragment {
 
     return sql
   }
-};
+}
 
 function escapeString(val: any) {
   const backslash = ~val.indexOf("\\")

@@ -150,11 +150,13 @@ export default class QueryOptimizer {
             ? _.map(over.partitionBy, (pb: any) => this.remapFields(pb, fields, scalar, alias))
             : undefined,
           orderBy: over.orderBy
-            ? _.map(over.orderBy, (ob: any) => _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) }))
+            ? _.map(over.orderBy, (ob: any) =>
+                _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) })
+              )
             : undefined
         },
         _.isUndefined
-      );
+      )
     }
 
     // Remaps selects for outer query, mapping fields in expr and over clauses
@@ -171,7 +173,7 @@ export default class QueryOptimizer {
           },
           _.isUndefined
         )
-      });
+      })
     }
 
     // If simple non-aggregate
@@ -537,7 +539,7 @@ export default class QueryOptimizer {
             }
           }),
           else: this.changeAlias(frag.else, fromAlias, toAlias)
-        });
+        })
       case "scalar":
         newFrag = _.extend({}, frag, {
           expr: this.changeAlias(frag.expr, fromAlias, toAlias),
@@ -600,19 +602,21 @@ export default class QueryOptimizer {
       case "query":
         return _.flatten(_.map(frag.selects, (select: any) => this.extractFields(select.expr)))
           .concat(this.extractFields(frag.where))
-          .concat(_.flatten(_.map(frag.orderBy, (orderBy: any) => this.extractFields(orderBy.expr))));
+          .concat(_.flatten(_.map(frag.orderBy, (orderBy: any) => this.extractFields(orderBy.expr))))
       case "field":
         return [frag]
       case "op":
         return _.flatten(_.map(frag.exprs, this.extractFields))
       case "case":
         return this.extractFields(frag.input)
-          .concat(_.flatten(_.map(frag.cases, (cs: any) => this.extractFields(cs.when).concat(this.extractFields(cs.then)))))
-          .concat(this.extractFields(frag.else));
+          .concat(
+            _.flatten(_.map(frag.cases, (cs: any) => this.extractFields(cs.when).concat(this.extractFields(cs.then))))
+          )
+          .concat(this.extractFields(frag.else))
       case "scalar":
         return this.extractFields(frag.frag)
           .concat(this.extractFields(frag.where))
-          .concat(_.map(frag.orderBy, (ob: any) => this.extractFields(ob.frag)));
+          .concat(_.map(frag.orderBy, (ob: any) => this.extractFields(ob.frag)))
       case "literal":
         return []
       case "token":
@@ -635,9 +639,9 @@ export default class QueryOptimizer {
         if (["sum", "min", "max", "avg", "count", "stdev", "stdevp", "var", "varp", "array_agg"].includes(expr.op)) {
           return true
         }
-        return _.any(expr.exprs, (ex: any) => this.isAggr(ex));
+        return _.any(expr.exprs, (ex: any) => this.isAggr(ex))
       case "case":
-        return _.any(expr.cases, (cs: any) => this.isAggr(cs.then));
+        return _.any(expr.cases, (cs: any) => this.isAggr(cs.then))
       case "scalar":
         return false
       case "literal":
@@ -667,7 +671,7 @@ export default class QueryOptimizer {
       case "op":
         return _.extend({}, frag, {
           exprs: _.map(frag.exprs, (ex: any) => this.remapFields(ex, fields, scalar, tableAlias))
-        });
+        })
       case "case":
         return _.extend({}, frag, {
           input: this.remapFields(frag.input, fields, scalar, tableAlias),
@@ -678,7 +682,7 @@ export default class QueryOptimizer {
             }
           }),
           else: this.remapFields(frag.else, fields, scalar, tableAlias)
-        });
+        })
       case "scalar":
         if (scalar === frag) {
           return { type: "field", tableAlias, column: "expr" }
@@ -722,7 +726,7 @@ export default class QueryOptimizer {
     this.aliasNum += 1
     return alias
   }
-};
+}
 
 // replaceFrag: (frag, fromFrag, toFrag) ->
 //   if not frag or not frag.type

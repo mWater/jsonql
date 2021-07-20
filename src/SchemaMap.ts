@@ -16,4 +16,4 @@ export default class SchemaMap {
   mapTableAlias(alias: any) {
     return alias
   }
-};
+}

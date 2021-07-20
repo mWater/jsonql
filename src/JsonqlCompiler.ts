@@ -25,7 +25,7 @@ export default class JsonqlCompiler {
           return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
         }),
         " union "
-      );
+      )
     }
 
     // If union all, handle that
@@ -35,7 +35,7 @@ export default class JsonqlCompiler {
           return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
         }),
         " union all "
-      );
+      )
     }
 
     // Optimize query first
@@ -732,7 +732,7 @@ export default class JsonqlCompiler {
       throw new Error(`Invalid alias '${alias}'`)
     }
   }
-};
+}
 
 function isInt(x: any) {
   return typeof x === "number" && x % 1 === 0
