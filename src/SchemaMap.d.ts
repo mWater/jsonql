@@ -1,4 +1,4 @@
-import SqlFragment from "./SqlFragment";
+import SqlFragment from "./SqlFragment"
 
 /** Maps tables and columns to a secure sql fragment. Base class is simple passthrough */
 export default class SchemaMap {

@@ -1,6 +1,6 @@
-export { default as SqlFragment } from './SqlFragment'
-export { default as JsonqlCompiler } from './JsonqlCompiler'
-export { default as SchemaMap } from './SchemaMap'
+export { default as SqlFragment } from "./SqlFragment"
+export { default as JsonqlCompiler } from "./JsonqlCompiler"
+export { default as SchemaMap } from "./SchemaMap"
 
 /** Takes a series of unions */
 export interface JsonQLUnion {
@@ -26,7 +26,10 @@ export interface JsonQLSelectQuery {
   /** groupBy: array of ordinals (1 based) or expressions (optional) */
   groupBy?: (number | JsonQLExpr)[]
   /** orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional) */
-  orderBy?: ({ ordinal: number, direction?: "asc" | "desc", nulls?: "last" | "first" } | { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" })[]
+  orderBy?: (
+    | { ordinal: number; direction?: "asc" | "desc"; nulls?: "last" | "first" }
+    | { expr: JsonQLExpr; direction?: "asc" | "desc"; nulls?: "last" | "first" }
+  )[]
 
   /** Limit number of rows */
   limit?: number
@@ -35,11 +38,21 @@ export interface JsonQLSelectQuery {
   distinct?: boolean
 
   /** withs: common table expressions (optional). array of { query:, alias: } */
-  withs?: { query: JsonQLQuery, alias: string }[]
+  withs?: { query: JsonQLQuery; alias: string }[]
 }
 
 /** JsonQL expression. Can be null */
-export type JsonQLExpr = JsonQLLiteral | JsonQLOp | JsonQLCase | JsonQLScalar | JsonQLField | JsonQLToken | null | number | string | boolean
+export type JsonQLExpr =
+  | JsonQLLiteral
+  | JsonQLOp
+  | JsonQLCase
+  | JsonQLScalar
+  | JsonQLField
+  | JsonQLToken
+  | null
+  | number
+  | string
+  | boolean
 
 /** Literal value */
 export interface JsonQLLiteral {
@@ -58,15 +71,15 @@ export interface JsonQLField {
 /**
  * Expression. Has op:
  *
- *  `>`, `<`, `<>`, `=`, `>=`, `<=`, 
- *  `+`, `-`, `*`, `/`, `~`, `~*`, 
+ *  `>`, `<`, `<>`, `=`, `>=`, `<=`,
+ *  `+`, `-`, `*`, `/`, `~`, `~*`,
  *  `like`, `and`, `or`, `not`, `is null`, `is not null`, `between`
  *  `avg`, `min`, `max`, `row_number`, etc.
  *  `exists`, `[]`, `array_agg`, etc
  *
  *  For count(*), use count with no expressions.
  *
- *  Has 
+ *  Has
  *  exprs: [expression]
  *  modifier: "any", "all", "distinct" (optional)
  *  orderBy: array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc)
@@ -81,14 +94,14 @@ export interface JsonQLOp {
 
   /** For = any etc */
   modifier?: "any" | "all" | "distinct"
-  
+
   /** array of { expr: expression, direction: "asc"/"desc" } for ordered functions like array_agg(xyz order by abc desc) */
-  orderBy?: { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" }[]
+  orderBy?: { expr: JsonQLExpr; direction?: "asc" | "desc"; nulls?: "last" | "first" }[]
 
   /** For window functions */
   over?: {
     partitionBy?: JsonQLExpr[]
-    orderBy?: { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" }[]
+    orderBy?: { expr: JsonQLExpr; direction?: "asc" | "desc"; nulls?: "last" | "first" }[]
   }
 }
 
@@ -99,7 +112,7 @@ export interface JsonQLCase {
   /** optional input expression */
   input?: JsonQLExpr
 
-  cases: { when: JsonQLExpr, then: JsonQLExpr }[]
+  cases: { when: JsonQLExpr; then: JsonQLExpr }[]
 
   /** optional else expression */
   else?: JsonQLExpr
@@ -108,8 +121,8 @@ export interface JsonQLCase {
 export type JsonQLFrom = JsonQLTableFrom | JsonQLJoinFrom | JsonQLSubqueryFrom | JsonQLSubexprFrom
 
 export interface JsonQLJoinFrom {
-  type: "join", 
-  left: JsonQLFrom 
+  type: "join"
+  left: JsonQLFrom
   right: JsonQLFrom
   kind: "inner" | "left" | "right" | "full" | "cross"
   /** Expression to join on */
@@ -144,19 +157,22 @@ export interface JsonQLSelect {
 
 /** Scalar subquery */
 export interface JsonQLScalar {
-  type: "scalar",
+  type: "scalar"
   expr: JsonQLExpr
   where?: JsonQLExpr
   from?: JsonQLFrom
 
   /** orderBy: array of { ordinal: (1 based) or expr: expression, direction: "asc"/"desc" (default asc), nulls: "last"/"first" (default is not set) } (optional) */
-  orderBy?: ({ ordinal: number, direction?: "asc" | "desc", nulls?: "last" | "first" } | { expr: JsonQLExpr, direction?: "asc" | "desc", nulls?: "last" | "first" })[]
+  orderBy?: (
+    | { ordinal: number; direction?: "asc" | "desc"; nulls?: "last" | "first" }
+    | { expr: JsonQLExpr; direction?: "asc" | "desc"; nulls?: "last" | "first" }
+  )[]
 
   /** Limit number of rows */
   limit?: number
 
   /** withs: common table expressions (optional). array of { query:, alias: } */
-  withs?: { query: JsonQLQuery, alias: string }[]
+  withs?: { query: JsonQLQuery; alias: string }[]
 }
 
 /** Special literal token, used for PostGIS, etc.

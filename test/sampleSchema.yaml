@@ -1,12 +1,12 @@
 tables:
   - id: tablexyz
     name: Table XYZ
-    primaryKey: id  # column name of primary key
+    primaryKey: id # column name of primary key
     sql: "(select * from tablexyz)" # Optional override on sql to get the column value. Most cases not needed
     contents:
       - type: section
         name: Section X
-        contents: 
+        contents:
           - type: text
             id: program_name
             name: Program Name

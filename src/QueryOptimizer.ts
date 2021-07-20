@@ -1,7 +1,7 @@
 // TODO: This file was created by bulk-decaffeinate.
 // Sanity-check the conversion and remove this comment.
-let QueryOptimizer;
-import _ from 'lodash';
+let QueryOptimizer
+import _ from "lodash"
 
 /*
 
@@ -30,151 +30,173 @@ See the tests for examples of all three re-writings. The speed difference is 100
 
 export default QueryOptimizer = class QueryOptimizer {
   constructor() {
-    this.aliasNum = 0;
+    this.aliasNum = 0
   }
 
   debugQuery(query) {
-    const SchemaMap = require('./SchemaMap');
-    const JsonqlCompiler = require('./JsonqlCompiler');
+    const SchemaMap = require("./SchemaMap")
+    const JsonqlCompiler = require("./JsonqlCompiler")
 
     try {
-      const sql = new JsonqlCompiler(new SchemaMap(), false).compileQuery(query);
-      console.log("===== SQL ======");
-      console.log(sql.toInline());
-      return console.log("================");
+      const sql = new JsonqlCompiler(new SchemaMap(), false).compileQuery(query)
+      console.log("===== SQL ======")
+      console.log(sql.toInline())
+      return console.log("================")
     } catch (ex) {
-      console.log("FAILURE: " + ex.message);
-      return console.log(JSON.stringify(query, null, 2));
+      console.log("FAILURE: " + ex.message)
+      return console.log(JSON.stringify(query, null, 2))
     }
   }
 
   // Run rewriteScalar query repeatedly until no more changes
   optimizeQuery(query, debug = false) {
     if (debug) {
-      console.log("================== BEFORE OPT ================");
-      this.debugQuery(query);
+      console.log("================== BEFORE OPT ================")
+      this.debugQuery(query)
     }
 
     for (let i = 0; i < 20; i++) {
-      const optQuery = this.rewriteScalar(query);
+      const optQuery = this.rewriteScalar(query)
 
       if (_.isEqual(optQuery, query)) {
-        return optQuery;
+        return optQuery
       }
 
       if (debug) {
-        console.log(`================== OPT ${i} ================`);
-        this.debugQuery(optQuery);
+        console.log(`================== OPT ${i} ================`)
+        this.debugQuery(optQuery)
       }
 
-      query = optQuery;
+      query = optQuery
     }
 
-    throw new Error(`Unable to optimize query (infinite loop): ${JSON.stringify(query)}`);
+    throw new Error(`Unable to optimize query (infinite loop): ${JSON.stringify(query)}`)
   }
 
   rewriteScalar(query) {
     // First optimize any inner queries
-    let opt1Alias, opt1Query, opt1Selects, opt2Alias, opt2From, opt2Query, opt2Selects, outerQuery;
-    query = this.optimizeInnerQueries(query);
+    let opt1Alias, opt1Query, opt1Selects, opt2Alias, opt2From, opt2Query, opt2Selects, outerQuery
+    query = this.optimizeInnerQueries(query)
 
     // Find scalar to optimize
-    const scalar = this.findScalar(query);
+    const scalar = this.findScalar(query)
 
     // If no scalar to optimize, return
     if (!scalar) {
-      return query;
+      return query
     }
 
     // If scalar doesn't have simply aliases from, return
     if (!scalar.from.alias) {
-      return query;
+      return query
     }
 
-    const oldScalarAlias = scalar.from.alias;
-    const newScalarAlias = this.createAlias();
+    const oldScalarAlias = scalar.from.alias
+    const newScalarAlias = this.createAlias()
 
     // Get table aliases in from
-    const fromAliases = this.extractFromAliases(query.from);
+    const fromAliases = this.extractFromAliases(query.from)
 
     // Get all fields
-    let fields = this.extractFields(query);
+    let fields = this.extractFields(query)
 
     // Filter fields to ones that reference from clause
-    fields = _.filter(fields, f => fromAliases.includes(f.tableAlias));
+    fields = _.filter(fields, (f) => fromAliases.includes(f.tableAlias))
 
     // Unique fields
-    fields = _.uniq(fields, f => `${f.tableAlias}::${f.column}`);
+    fields = _.uniq(fields, (f) => `${f.tableAlias}::${f.column}`)
 
     // Split where into ands
-    let wheres = [];
-    if (query.where && (query.where.type === "op") && (query.where.op === "and")) {
-      wheres = query.where.exprs;
+    let wheres = []
+    if (query.where && query.where.type === "op" && query.where.op === "and") {
+      wheres = query.where.exprs
     } else if (query.where) {
       // Single expression
-      wheres = [query.where];
+      wheres = [query.where]
     }
 
     // Split inner where (not containing the scalar) and outer wheres (containing the scalar)
-    let innerWhere = { type: "op", op: "and", exprs: _.filter(wheres, where => {
-      return this.findScalar(where) !== scalar;
-      }) };
+    let innerWhere = {
+      type: "op",
+      op: "and",
+      exprs: _.filter(wheres, (where) => {
+        return this.findScalar(where) !== scalar
+      })
+    }
 
-    let outerWhere = { type: "op", op: "and", exprs: _.filter(wheres, where => {
-      return this.findScalar(where) === scalar;
-      }) };
+    let outerWhere = {
+      type: "op",
+      op: "and",
+      exprs: _.filter(wheres, (where) => {
+        return this.findScalar(where) === scalar
+      })
+    }
 
     // Null if empty
     if (innerWhere.exprs.length === 0) {
-      innerWhere = null;
+      innerWhere = null
     }
 
     if (outerWhere.exprs.length === 0) {
-      outerWhere = null;
+      outerWhere = null
     }
 
     // Remaps over clause in select
     const remapOver = (over, alias) => {
       if (!over) {
-        return over;
+        return over
       }
 
-      return _.omit({
-        partitionBy: over.partitionBy ? _.map(over.partitionBy, pb => this.remapFields(pb, fields, scalar, alias)) : undefined,
-        orderBy: over.orderBy ? _.map(over.orderBy, ob => _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) })) : undefined
-        }, _.isUndefined);
-    };
+      return _.omit(
+        {
+          partitionBy: over.partitionBy
+            ? _.map(over.partitionBy, (pb) => this.remapFields(pb, fields, scalar, alias))
+            : undefined,
+          orderBy: over.orderBy
+            ? _.map(over.orderBy, (ob) => _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, alias) }))
+            : undefined
+        },
+        _.isUndefined
+      )
+    }
 
     // Remaps selects for outer query, mapping fields in expr and over clauses
     const remapSelects = (selects, alias) => {
       // Re-write query selects to use new opt1 query
-      return _.map(selects, select => {
+      return _.map(selects, (select) => {
         // Get rid of undefined values
-        return _.omit({
-          type: "select",
-          expr: this.remapFields(select.expr, fields, scalar, alias),
-          over: remapOver(select.over, alias),
-          alias: select.alias
-        }, _.isUndefined);
-      });
-    };
-      
+        return _.omit(
+          {
+            type: "select",
+            expr: this.remapFields(select.expr, fields, scalar, alias),
+            over: remapOver(select.over, alias),
+            alias: select.alias
+          },
+          _.isUndefined
+        )
+      })
+    }
+
     // If simple non-aggregate
     if (!this.isAggr(scalar.expr) && !scalar.limit) {
       // Create new selects for opt1 query with all fields + scalar expression
-      opt1Selects = _.map(fields, field => {
-        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` };
-      });
-      opt1Selects.push({ type: "select", expr: this.changeAlias(scalar.expr, oldScalarAlias, newScalarAlias), alias: "expr" });
+      opt1Selects = _.map(fields, (field) => {
+        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
+      })
+      opt1Selects.push({
+        type: "select",
+        expr: this.changeAlias(scalar.expr, oldScalarAlias, newScalarAlias),
+        alias: "expr"
+      })
 
       // Create new opt1 from clause with left outer join to scalar
-      const opt1From = { 
+      const opt1From = {
         type: "join",
         kind: "left",
         left: query.from,
         right: this.changeAlias(scalar.from, oldScalarAlias, newScalarAlias),
-        on: this.changeAlias(scalar.where, oldScalarAlias, newScalarAlias) 
-      };
+        on: this.changeAlias(scalar.where, oldScalarAlias, newScalarAlias)
+      }
 
       // Create opt1 query opt1
       opt1Query = {
@@ -182,13 +204,13 @@ export default QueryOptimizer = class QueryOptimizer {
         selects: opt1Selects,
         from: opt1From,
         where: innerWhere
-      };
+      }
 
       // Optimize inner query
-      opt1Query = this.optimizeQuery(opt1Query, false);
+      opt1Query = this.optimizeQuery(opt1Query, false)
 
       // Create alias for opt1 query
-      opt1Alias = this.createAlias();
+      opt1Alias = this.createAlias()
 
       outerQuery = _.extend({}, query, {
         // Re-write query selects to use new opt1 query
@@ -199,24 +221,23 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt1Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt1Alias),
-        orderBy: _.map(query.orderBy, orderBy => {
+        orderBy: _.map(query.orderBy, (orderBy) => {
           if (!orderBy.expr) {
-            return orderBy;
+            return orderBy
           }
-          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt1Alias) });
+          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt1Alias) })
         })
-      });
-      return outerQuery;
-
+      })
+      return outerQuery
     } else if (!scalar.limit) {
       // Create new selects for opt1 query with all fields + row number
-      opt1Selects = _.map(fields, field => {
-        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` };
-      });
-      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" });
+      opt1Selects = _.map(fields, (field) => {
+        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
+      })
+      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
 
       // Create alias for opt1 query
-      opt1Alias = this.createAlias();
+      opt1Alias = this.createAlias()
 
       // Create opt1 query opt1
       opt1Query = {
@@ -224,36 +245,46 @@ export default QueryOptimizer = class QueryOptimizer {
         selects: opt1Selects,
         from: query.from,
         where: innerWhere
-      };
+      }
 
       // Optimize inner query
-      opt1Query = this.optimizeQuery(opt1Query, false);
+      opt1Query = this.optimizeQuery(opt1Query, false)
 
       // Create new selects for opt2 query with row number + all fields + scalar expression
-      opt2Selects = [{ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "rn" }, alias: "rn" }];
-      opt2Selects = opt2Selects.concat(_.map(fields, field => {
-        return { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` }, alias: `opt_${field.tableAlias}_${field.column}` };
-      }));
-      opt2Selects.push({ type: "select", expr: this.changeAlias(this.remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias), alias: "expr" });
+      opt2Selects = [{ type: "select", expr: { type: "field", tableAlias: opt1Alias, column: "rn" }, alias: "rn" }]
+      opt2Selects = opt2Selects.concat(
+        _.map(fields, (field) => {
+          return {
+            type: "select",
+            expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` },
+            alias: `opt_${field.tableAlias}_${field.column}`
+          }
+        })
+      )
+      opt2Selects.push({
+        type: "select",
+        expr: this.changeAlias(this.remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias),
+        alias: "expr"
+      })
 
       // Create new opt2 from clause with left outer join to scalar
-      opt2From = { 
+      opt2From = {
         type: "join",
         kind: "left",
         left: { type: "subquery", query: opt1Query, alias: opt1Alias },
         right: this.changeAlias(scalar.from, oldScalarAlias, newScalarAlias),
         on: this.changeAlias(this.remapFields(scalar.where, fields, scalar, opt1Alias), oldScalarAlias, newScalarAlias)
-      };
+      }
 
       opt2Query = {
         type: "query",
         selects: opt2Selects,
         from: opt2From,
         groupBy: _.range(1, fields.length + 2)
-      };
+      }
 
       // Create alias for opt2 query
-      opt2Alias = this.createAlias();
+      opt2Alias = this.createAlias()
 
       outerQuery = _.extend({}, query, {
         // Re-write query selects to use new opt2 query
@@ -264,23 +295,23 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt2Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt2Alias),
-        orderBy: _.map(query.orderBy, orderBy => {
+        orderBy: _.map(query.orderBy, (orderBy) => {
           if (!orderBy.expr) {
-            return orderBy;
+            return orderBy
           }
-          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt2Alias) });
+          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt2Alias) })
         })
-      });
+      })
 
-      return outerQuery;
+      return outerQuery
 
-    // Limit scalar
-    } else { 
+      // Limit scalar
+    } else {
       // Create new selects for opt1 query with all fields + row number
-      opt1Selects = _.map(fields, field => {
-        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` };
-      });
-      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" });
+      opt1Selects = _.map(fields, (field) => {
+        return { type: "select", expr: field, alias: `opt_${field.tableAlias}_${field.column}` }
+      })
+      opt1Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" })
 
       // Create opt1 query opt1
       opt1Query = {
@@ -288,51 +319,72 @@ export default QueryOptimizer = class QueryOptimizer {
         selects: opt1Selects,
         from: query.from,
         where: innerWhere
-      };
+      }
 
       // Optimize inner query
-      opt1Query = this.optimizeQuery(opt1Query, false);
+      opt1Query = this.optimizeQuery(opt1Query, false)
 
       // Create alias for opt1 query
-      opt1Alias = this.createAlias();
+      opt1Alias = this.createAlias()
 
       // Create new selects for opt2 query with all fields + scalar expression + ordered row number over inner row number
-      opt2Selects = _.map(fields, field => {
-        return { type: "select", expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` }, alias: `opt_${field.tableAlias}_${field.column}` };
-      });
-      opt2Selects.push({ type: "select", expr: this.changeAlias(this.remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias), alias: "expr" });
-      opt2Selects.push({ type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {
-        partitionBy: [{ type: "field", tableAlias: opt1Alias, column: "rn" }],
-        orderBy: _.map(scalar.orderBy, ob => { 
-          if (ob.expr) {
-            return _.extend({}, ob, {expr: this.changeAlias(ob.expr, oldScalarAlias, newScalarAlias)});
-          }
-          return ob;
-        })
-      }, alias: "rn" });
+      opt2Selects = _.map(fields, (field) => {
+        return {
+          type: "select",
+          expr: { type: "field", tableAlias: opt1Alias, column: `opt_${field.tableAlias}_${field.column}` },
+          alias: `opt_${field.tableAlias}_${field.column}`
+        }
+      })
+      opt2Selects.push({
+        type: "select",
+        expr: this.changeAlias(this.remapFields(scalar.expr, fields, null, opt1Alias), oldScalarAlias, newScalarAlias),
+        alias: "expr"
+      })
+      opt2Selects.push({
+        type: "select",
+        expr: { type: "op", op: "row_number", exprs: [] },
+        over: {
+          partitionBy: [{ type: "field", tableAlias: opt1Alias, column: "rn" }],
+          orderBy: _.map(scalar.orderBy, (ob) => {
+            if (ob.expr) {
+              return _.extend({}, ob, { expr: this.changeAlias(ob.expr, oldScalarAlias, newScalarAlias) })
+            }
+            return ob
+          })
+        },
+        alias: "rn"
+      })
 
       // Create new opt2 from clause with left outer join to scalar
-      opt2From = { 
+      opt2From = {
         type: "join",
         kind: "left",
         left: { type: "subquery", query: opt1Query, alias: opt1Alias },
         right: this.changeAlias(scalar.from, oldScalarAlias, newScalarAlias),
         on: this.changeAlias(this.remapFields(scalar.where, fields, scalar, opt1Alias), oldScalarAlias, newScalarAlias)
-      };
+      }
 
       opt2Query = {
         type: "query",
         selects: opt2Selects,
         from: opt2From
-      };
+      }
 
       // Create alias for opt2 query
-      opt2Alias = this.createAlias();
+      opt2Alias = this.createAlias()
 
-      const opt3Selects = _.map(fields, field => {
-        return { type: "select", expr: { type: "field", tableAlias: opt2Alias, column: `opt_${field.tableAlias}_${field.column}` }, alias: `opt_${field.tableAlias}_${field.column}` };
-      });
-      opt3Selects.push({ type: "select", expr: { type: "field", tableAlias: opt2Alias, column: "expr" }, alias: "expr" });
+      const opt3Selects = _.map(fields, (field) => {
+        return {
+          type: "select",
+          expr: { type: "field", tableAlias: opt2Alias, column: `opt_${field.tableAlias}_${field.column}` },
+          alias: `opt_${field.tableAlias}_${field.column}`
+        }
+      })
+      opt3Selects.push({
+        type: "select",
+        expr: { type: "field", tableAlias: opt2Alias, column: "expr" },
+        alias: "expr"
+      })
 
       const opt3Query = {
         type: "query",
@@ -350,10 +402,10 @@ export default QueryOptimizer = class QueryOptimizer {
             { type: "literal", value: 1 }
           ]
         }
-      };
+      }
 
       // Create alias for opt3 query
-      const opt3Alias = this.createAlias();
+      const opt3Alias = this.createAlias()
 
       // Wrap in final query
       outerQuery = _.extend({}, query, {
@@ -365,306 +417,315 @@ export default QueryOptimizer = class QueryOptimizer {
           alias: opt3Alias
         },
         where: this.remapFields(outerWhere, fields, scalar, opt3Alias),
-        orderBy: _.map(query.orderBy, orderBy => {
+        orderBy: _.map(query.orderBy, (orderBy) => {
           if (!orderBy.expr) {
-            return orderBy;
+            return orderBy
           }
-          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt3Alias) });
+          return _.extend({}, orderBy, { expr: this.remapFields(orderBy.expr, fields, scalar, opt3Alias) })
         })
-      });
+      })
 
-      return outerQuery;
+      return outerQuery
     }
   }
 
   optimizeInnerQueries(query) {
-    var optimizeFrom = from => {
+    var optimizeFrom = (from) => {
       switch (from.type) {
-        case "table": case "subexpr":
-          return from;
+        case "table":
+        case "subexpr":
+          return from
         case "join":
           return _.extend({}, from, {
             left: optimizeFrom(from.left),
             right: optimizeFrom(from.right)
-          });
+          })
         case "subquery":
           return _.extend({}, from, {
             query: this.optimizeQuery(from.query)
-          });
+          })
         default:
-          throw new Error(`Unknown optimizeFrom type ${from.type}`);
+          throw new Error(`Unknown optimizeFrom type ${from.type}`)
       }
-    };
+    }
 
-    return query = _.extend({}, query, {from: optimizeFrom(query.from)});
+    return (query = _.extend({}, query, { from: optimizeFrom(query.from) }))
   }
 
   // Find a scalar in where, selects or order by or expression
   findScalar(frag) {
     if (!frag || !frag.type) {
-      return null;
+      return null
     }
 
     switch (frag.type) {
       case "query":
         // Find in where clause
-        var scalar = this.findScalar(frag.where);
+        var scalar = this.findScalar(frag.where)
         if (scalar) {
-          return scalar;
+          return scalar
         }
-        
+
         // Find in selects
-        for (let select of frag.selects) {        
-          scalar = this.findScalar(select.expr);
+        for (let select of frag.selects) {
+          scalar = this.findScalar(select.expr)
           if (scalar) {
-            return scalar;
+            return scalar
           }
         }
 
         // Find in order by
         if (frag.orderBy) {
           for (let orderBy of frag.orderBy) {
-            scalar = this.findScalar(orderBy.expr);
+            scalar = this.findScalar(orderBy.expr)
             if (scalar) {
-              return scalar;
+              return scalar
             }
           }
         }
-        break;
+        break
 
       case "scalar":
-        return frag;
-        break;
+        return frag
+        break
 
       case "op":
         if (frag.exprs) {
-          for (let expr of frag.exprs) { 
-            scalar = this.findScalar(expr);
+          for (let expr of frag.exprs) {
+            scalar = this.findScalar(expr)
             if (scalar) {
-              return scalar;
+              return scalar
             }
           }
         }
-        break;
+        break
     }
 
-    return null;
+    return null
   }
-
 
   // Change a specific alias to another one
   changeAlias(frag, fromAlias, toAlias) {
     if (!frag || !frag.type) {
-      return frag;
+      return frag
     }
 
     switch (frag.type) {
       case "field":
         if (frag.tableAlias === fromAlias) {
           // Remap
-          return { type: "field", tableAlias: toAlias, column: frag.column };
+          return { type: "field", tableAlias: toAlias, column: frag.column }
         }
-        return frag;
+        return frag
       case "op":
         var newFrag = _.extend({}, frag, {
-          exprs: _.map(frag.exprs, ex => this.changeAlias(ex, fromAlias, toAlias))
-        });
+          exprs: _.map(frag.exprs, (ex) => this.changeAlias(ex, fromAlias, toAlias))
+        })
         if (frag.orderBy) {
-          newFrag.orderBy = _.map(frag.orderBy, ob => { 
+          newFrag.orderBy = _.map(frag.orderBy, (ob) => {
             if (ob.expr) {
-              return _.extend({}, ob, {expr: this.changeAlias(ob.expr, fromAlias, toAlias)});
+              return _.extend({}, ob, { expr: this.changeAlias(ob.expr, fromAlias, toAlias) })
             }
-            return ob;
-          });
+            return ob
+          })
         }
-        return newFrag;
+        return newFrag
       case "case":
         return _.extend({}, frag, {
           input: this.changeAlias(frag.input, fromAlias, toAlias),
-          cases: _.map(frag.cases, cs => {
+          cases: _.map(frag.cases, (cs) => {
             return {
               when: this.changeAlias(cs.when, fromAlias, toAlias),
               then: this.changeAlias(cs.then, fromAlias, toAlias)
-            };
+            }
           }),
           else: this.changeAlias(frag.else, fromAlias, toAlias)
-        });
+        })
       case "scalar":
         newFrag = _.extend({}, frag, {
           expr: this.changeAlias(frag.expr, fromAlias, toAlias),
           from: this.changeAlias(frag.from, fromAlias, toAlias),
           where: this.changeAlias(frag.where, fromAlias, toAlias),
           orderBy: this.changeAlias(frag.orderBy, fromAlias, toAlias)
-        });
+        })
         if (frag.orderBy) {
-          newFrag.orderBy = _.map(frag.orderBy, ob => { 
+          newFrag.orderBy = _.map(frag.orderBy, (ob) => {
             if (ob.expr) {
-              return _.extend({}, ob, {expr: this.changeAlias(ob.expr, fromAlias, toAlias)});
+              return _.extend({}, ob, { expr: this.changeAlias(ob.expr, fromAlias, toAlias) })
             }
-            return ob;
-          });
+            return ob
+          })
         }
-        return newFrag;
+        return newFrag
 
       case "table":
         if (frag.alias === fromAlias) {
-          return { type: "table", table: frag.table, alias: toAlias };
+          return { type: "table", table: frag.table, alias: toAlias }
         }
-        return frag;
+        return frag
       case "join":
         return _.extend({}, frag, {
           left: this.changeAlias(frag.left, fromAlias, toAlias),
           right: this.changeAlias(frag.right, fromAlias, toAlias),
           on: this.changeAlias(frag.on, fromAlias, toAlias)
-        });
+        })
       case "literal":
-        return frag;
+        return frag
       case "token":
-        return frag;
+        return frag
       default:
-        throw new Error(`Unsupported changeAlias with type ${frag.type}`);
+        throw new Error(`Unsupported changeAlias with type ${frag.type}`)
     }
   }
 
   extractFromAliases(from) {
     switch (from.type) {
-      case "table": case "subquery": case "subexpr":
-        return [from.alias];
-        break;
+      case "table":
+      case "subquery":
+      case "subexpr":
+        return [from.alias]
+        break
       case "join":
-        return this.extractFromAliases(from.left).concat(this.extractFromAliases(from.right));
-        break;
+        return this.extractFromAliases(from.left).concat(this.extractFromAliases(from.right))
+        break
     }
 
-    throw new Error(`Unknown from type ${from.type}`);
+    throw new Error(`Unknown from type ${from.type}`)
   }
 
   // Extract all jsonql field expressions from a jsonql fragment
-  extractFields = frag => {
+  extractFields = (frag) => {
     if (!frag || !frag.type) {
-      return [];
+      return []
     }
 
     switch (frag.type) {
       case "query":
-        return _.flatten(_.map(frag.selects, select => this.extractFields(select.expr))).concat(this.extractFields(frag.where)).concat(_.flatten(_.map(frag.orderBy, orderBy => this.extractFields(orderBy.expr))));
+        return _.flatten(_.map(frag.selects, (select) => this.extractFields(select.expr)))
+          .concat(this.extractFields(frag.where))
+          .concat(_.flatten(_.map(frag.orderBy, (orderBy) => this.extractFields(orderBy.expr))))
       case "field":
-        return [frag];
+        return [frag]
       case "op":
-        return _.flatten(_.map(frag.exprs, this.extractFields));
+        return _.flatten(_.map(frag.exprs, this.extractFields))
       case "case":
-        return this.extractFields(frag.input).concat(_.flatten(_.map(frag.cases, cs => this.extractFields(cs.when).concat(this.extractFields(cs.then))))).concat(this.extractFields(frag.else));
+        return this.extractFields(frag.input)
+          .concat(_.flatten(_.map(frag.cases, (cs) => this.extractFields(cs.when).concat(this.extractFields(cs.then)))))
+          .concat(this.extractFields(frag.else))
       case "scalar":
-        return this.extractFields(frag.frag).concat(this.extractFields(frag.where)).concat(_.map(frag.orderBy, ob => this.extractFields(ob.frag)));
+        return this.extractFields(frag.frag)
+          .concat(this.extractFields(frag.where))
+          .concat(_.map(frag.orderBy, (ob) => this.extractFields(ob.frag)))
       case "literal":
-        return [];
+        return []
       case "token":
-        return [];
+        return []
       default:
-        throw new Error(`Unsupported extractFields with type ${frag.type}`);
+        throw new Error(`Unsupported extractFields with type ${frag.type}`)
     }
-  };
+  }
 
   // Determine if expression is aggregate
-  isAggr = expr => {
+  isAggr = (expr) => {
     if (!expr || !expr.type) {
-      return false;
+      return false
     }
 
     switch (expr.type) {
       case "field":
-        return false;
+        return false
       case "op":
-        if (['sum', 'min', 'max', 'avg', 'count', 'stdev', 'stdevp', 'var', 'varp', 'array_agg'].includes(expr.op)) {
-          return true;
+        if (["sum", "min", "max", "avg", "count", "stdev", "stdevp", "var", "varp", "array_agg"].includes(expr.op)) {
+          return true
         }
-        return _.any(expr.exprs, ex => this.isAggr(ex));
+        return _.any(expr.exprs, (ex) => this.isAggr(ex))
       case "case":
-        return _.any(expr.cases, cs => this.isAggr(cs.then));
+        return _.any(expr.cases, (cs) => this.isAggr(cs.then))
       case "scalar":
-        return false;
+        return false
       case "literal":
-        return false;
+        return false
       case "token":
-        return false;
+        return false
       default:
-        throw new Error(`Unsupported isAggr with type ${expr.type}`);
+        throw new Error(`Unsupported isAggr with type ${expr.type}`)
     }
-  };
+  }
 
   // Remap fields a.b1 to format <tableAlias>.opt_a_b1
   remapFields(frag, fields, scalar, tableAlias) {
     if (!frag || !frag.type) {
-      return frag;
+      return frag
     }
 
     switch (frag.type) {
       case "field":
         for (let field of fields) {
           // Remap
-          if ((field.tableAlias === frag.tableAlias) && (field.column === frag.column)) {
-            return { type: "field", tableAlias, column: `opt_${field.tableAlias}_${field.column}` };
+          if (field.tableAlias === frag.tableAlias && field.column === frag.column) {
+            return { type: "field", tableAlias, column: `opt_${field.tableAlias}_${field.column}` }
           }
         }
-        return frag;
+        return frag
       case "op":
-        return _.extend({}, frag, {exprs: _.map(frag.exprs, ex => this.remapFields(ex, fields, scalar, tableAlias))});
+        return _.extend({}, frag, {
+          exprs: _.map(frag.exprs, (ex) => this.remapFields(ex, fields, scalar, tableAlias))
+        })
       case "case":
         return _.extend({}, frag, {
           input: this.remapFields(frag.input, fields, scalar, tableAlias),
-          cases: _.map(frag.cases, cs => {
+          cases: _.map(frag.cases, (cs) => {
             return {
               when: this.remapFields(cs.when, fields, scalar, tableAlias),
               then: this.remapFields(cs.then, fields, scalar, tableAlias)
-            };
+            }
           }),
           else: this.remapFields(frag.else, fields, scalar, tableAlias)
-        });
+        })
       case "scalar":
         if (scalar === frag) {
-          return { type: "field", tableAlias, column: "expr" };
-        } else { 
+          return { type: "field", tableAlias, column: "expr" }
+        } else {
           const newFrag = _.extend({}, frag, {
             expr: this.remapFields(frag.expr, fields, scalar, tableAlias),
             from: this.remapFields(frag.from, fields, scalar, tableAlias),
             where: this.remapFields(frag.where, fields, scalar, tableAlias)
-          });
+          })
           if (frag.orderBy) {
-            newFrag.orderBy = _.map(frag.orderBy, ob => { 
+            newFrag.orderBy = _.map(frag.orderBy, (ob) => {
               if (ob.expr) {
-                return _.extend({}, ob, {expr: this.remapFields(ob.expr, fields, scalar, tableAlias)});
+                return _.extend({}, ob, { expr: this.remapFields(ob.expr, fields, scalar, tableAlias) })
               }
-              return ob;
-            });
+              return ob
+            })
           }
-          return newFrag;
+          return newFrag
         }
 
       case "table":
-        return frag;
+        return frag
       case "join":
         return _.extend({}, frag, {
           left: this.remapFields(frag.left, fields, scalar, tableAlias),
           right: this.remapFields(frag.right, fields, scalar, tableAlias),
           on: this.remapFields(frag.on, fields, scalar, tableAlias)
-        });
+        })
       case "literal":
-        return frag;
+        return frag
       case "token":
-        return frag;
+        return frag
       default:
-        throw new Error(`Unsupported remapFields with type ${frag.type}`);
+        throw new Error(`Unsupported remapFields with type ${frag.type}`)
     }
   }
 
   // Create a unique table alias
   createAlias() {
-    const alias = `opt${this.aliasNum}`;
-    this.aliasNum += 1;
-    return alias;
+    const alias = `opt${this.aliasNum}`
+    this.aliasNum += 1
+    return alias
   }
-};
-
+}
 
 // replaceFrag: (frag, fromFrag, toFrag) ->
 //   if not frag or not frag.type
