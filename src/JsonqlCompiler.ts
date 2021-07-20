@@ -2,21 +2,33 @@ import _ from "lodash"
 import SqlFragment from "./SqlFragment"
 import QueryOptimizer from "./QueryOptimizer"
 
-// Compiles jsonql to sql
+import { JsonQLQuery, JsonQLExpr, JsonQLSelectQuery } from "."
+import SchemaMap from "./SchemaMap"
+
+/** Compiles jsonql to sql */
 export default class JsonqlCompiler {
-  constructor(schemaMap: any, optimizeQueries = false) {
+  optimizeQueries: boolean
+  schemaMap: any
+  nextId: number
+  
+  constructor(schemaMap: SchemaMap, optimizeQueries?: boolean) {
     this.schemaMap = schemaMap
     this.nextId = 1
 
-    this.optimizeQueries = optimizeQueries
+    this.optimizeQueries = optimizeQueries || false
   }
 
-  // Compile a query (or union of queries) made up of selects, from, where, order, limit, skip
-  // `aliases` are aliases to tables which have a particular row already selected
-  // for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
-  // expression, so it already has a row selected.
-  // ctes are aliases for common table expressions. They are a map of alias to true
-  compileQuery(query: any, aliases = {}, ctes = {}) {
+  /* Compile a query (or union of queries) made up of selects, from, where, order, limit, skip
+   * `aliases` are aliases to tables which have a particular row already selected
+   * for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
+   * expression, so it already has a row selected.
+   * ctes are aliases for common table expressions. They are a map of alias to true
+   */
+  compileQuery(
+    query: JsonQLQuery,
+    aliases: { [alias: string]: string | boolean } = {},
+    ctes: { [alias: string]: boolean } = {}
+  ): SqlFragment {
     // If union, handle that
     let from
     if (query.type === "union") {
@@ -40,7 +52,7 @@ export default class JsonqlCompiler {
 
     // Optimize query first
     if (this.optimizeQueries) {
-      query = new QueryOptimizer().optimizeQuery(query)
+      query = new QueryOptimizer().optimizeQuery(query) as JsonQLSelectQuery
     }
 
     const frag = new SqlFragment()
@@ -181,7 +193,7 @@ export default class JsonqlCompiler {
 
   // Compiles table or join returning sql and modifying aliases
   // ctes are aliases for common table expressions. They are a map of alias to true
-  compileFrom(from: any, aliases = {}, ctes = {}) {
+  compileFrom(from: any, aliases = {}, ctes = {}): SqlFragment {
     // TODO check that alias is not repeated in from
     switch (from.type) {
       case "table":
@@ -210,13 +222,14 @@ export default class JsonqlCompiler {
         var left = this.compileFrom(from.left, aliases, ctes)
         var right = this.compileFrom(from.right, aliases, ctes)
 
-        // Make sure aliases don't overlap
-        if (_.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0) {
-          throw new Error("Duplicate aliases")
-        }
+        // TODO this has never worked
+        // // Make sure aliases don't overlap
+        // if (_.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0) {
+        //   throw new Error("Duplicate aliases")
+        // }
 
-        _.extend(aliases, left.aliases)
-        _.extend(aliases, right.aliases)
+        // _.extend(aliases, left.aliases)
+        // _.extend(aliases, right.aliases)
 
         // Ensure that on is present for non-cross
         if (from.kind !== "cross" && from.on == null) {
@@ -333,9 +346,10 @@ export default class JsonqlCompiler {
     return frag
   }
 
-  // Compiles an expression
-  // aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
-  compileExpr(expr: any, aliases: any, ctes = {}) {
+  /** Compiles an expression
+   aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
+   */
+  compileExpr(expr: JsonQLExpr, aliases: { [alias: string]: string | boolean }, ctes: { [alias: string]: boolean } = {}): SqlFragment {
     if (aliases == null) {
       throw new Error("Missing aliases")
     }
@@ -345,7 +359,7 @@ export default class JsonqlCompiler {
     }
 
     // Literals
-    if (["number", "string", "boolean"].includes(typeof expr)) {
+    if (typeof expr == "number" || typeof expr == "string" || typeof expr == "boolean") {
       return new SqlFragment("?", [expr])
     }
 
@@ -392,7 +406,7 @@ export default class JsonqlCompiler {
       case "case":
         return this.compileCaseExpr(expr, aliases, ctes)
       default:
-        throw new Error(`Unsupported type ${expr.type} in ${JSON.stringify(expr)}`)
+        throw new Error(`Unsupported type ${(expr as any).type} in ${JSON.stringify(expr)}`)
     }
   }
 
@@ -576,7 +590,7 @@ export default class JsonqlCompiler {
 
           // Handle special case of count(*)
           if (expr.op === "count" && inner.isEmpty()) {
-            inner = "*"
+            inner = new SqlFragment("*")
           }
 
           // Handle orderBy

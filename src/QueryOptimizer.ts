@@ -24,8 +24,9 @@ We re-write wheres first, followed by selects, followed by order bys.
 See the tests for examples of all three re-writings. The speed difference is 1000x plus depending on the # of rows.
 
 */
-
 export default class QueryOptimizer {
+  aliasNum: number
+
   constructor() {
     this.aliasNum = 0
   }
@@ -46,7 +47,7 @@ export default class QueryOptimizer {
   }
 
   // Run rewriteScalar query repeatedly until no more changes
-  optimizeQuery(query: any, debug = false) {
+  optimizeQuery(query: any, debug = false): any {
     if (debug) {
       console.log("================== BEFORE OPT ================")
       this.debugQuery(query)
@@ -70,9 +71,9 @@ export default class QueryOptimizer {
     throw new Error(`Unable to optimize query (infinite loop): ${JSON.stringify(query)}`)
   }
 
-  rewriteScalar(query: any) {
+  rewriteScalar(query: any): any {
     // First optimize any inner queries
-    let opt1Alias: any, opt1Query, opt1Selects, opt2Alias: any, opt2From, opt2Query, opt2Selects, outerQuery
+    let opt1Alias: any, opt1Query: any, opt1Selects: any, opt2Alias: any, opt2From: any, opt2Query: any, opt2Selects: any, outerQuery: any
     query = this.optimizeInnerQueries(query)
 
     // Find scalar to optimize
@@ -113,7 +114,7 @@ export default class QueryOptimizer {
     }
 
     // Split inner where (not containing the scalar) and outer wheres (containing the scalar)
-    let innerWhere = {
+    let innerWhere: any = {
       type: "op",
       op: "and",
       exprs: _.filter(wheres, (where: any) => {
@@ -121,7 +122,7 @@ export default class QueryOptimizer {
       })
     }
 
-    let outerWhere = {
+    let outerWhere: any = {
       type: "op",
       op: "and",
       exprs: _.filter(wheres, (where: any) => {
@@ -429,7 +430,7 @@ export default class QueryOptimizer {
   }
 
   optimizeInnerQueries(query: any) {
-    var optimizeFrom = (from: any) => {
+    var optimizeFrom: any = (from: any) => {
       switch (from.type) {
         case "table":
         case "subexpr":
@@ -452,7 +453,7 @@ export default class QueryOptimizer {
   }
 
   // Find a scalar in where, selects or order by or expression
-  findScalar(frag: any) {
+  findScalar(frag: any): any {
     if (!frag || !frag.type) {
       return null
     }
@@ -504,7 +505,7 @@ export default class QueryOptimizer {
   }
 
   // Change a specific alias to another one
-  changeAlias(frag: any, fromAlias: any, toAlias: any) {
+  changeAlias(frag: any, fromAlias: any, toAlias: any): any {
     if (!frag || !frag.type) {
       return frag
     }
@@ -517,7 +518,7 @@ export default class QueryOptimizer {
         }
         return frag
       case "op":
-        var newFrag = _.extend({}, frag, {
+        var newFrag: any = _.extend({}, frag, {
           exprs: _.map(frag.exprs, (ex: any) => this.changeAlias(ex, fromAlias, toAlias))
         })
         if (frag.orderBy) {
@@ -577,7 +578,7 @@ export default class QueryOptimizer {
     }
   }
 
-  extractFromAliases(from: any) {
+  extractFromAliases(from: any): any {
     switch (from.type) {
       case "table":
       case "subquery":
@@ -593,7 +594,7 @@ export default class QueryOptimizer {
   }
 
   // Extract all jsonql field expressions from a jsonql fragment
-  extractFields = (frag: any) => {
+  extractFields = (frag: any): any => {
     if (!frag || !frag.type) {
       return []
     }
@@ -627,7 +628,7 @@ export default class QueryOptimizer {
   }
 
   // Determine if expression is aggregate
-  isAggr = (expr: any) => {
+  isAggr = (expr: any): any => {
     if (!expr || !expr.type) {
       return false
     }
@@ -654,7 +655,7 @@ export default class QueryOptimizer {
   }
 
   // Remap fields a.b1 to format <tableAlias>.opt_a_b1
-  remapFields(frag: any, fields: any, scalar: any, tableAlias: any) {
+  remapFields(frag: any, fields: any, scalar: any, tableAlias: any): any {
     if (!frag || !frag.type) {
       return frag
     }
@@ -687,7 +688,7 @@ export default class QueryOptimizer {
         if (scalar === frag) {
           return { type: "field", tableAlias, column: "expr" }
         } else {
-          const newFrag = _.extend({}, frag, {
+          const newFrag: any = _.extend({}, frag, {
             expr: this.remapFields(frag.expr, fields, scalar, tableAlias),
             from: this.remapFields(frag.from, fields, scalar, tableAlias),
             where: this.remapFields(frag.where, fields, scalar, tableAlias)

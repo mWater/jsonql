@@ -1,14 +1,21 @@
 import _ from "lodash"
 
-// Fragment of SQL that has sql (text) and params (array)
+/** Fragment of SQL that has sql (text) and params (array) */
 export default class SqlFragment {
-  constructor(sql: any, params: any) {
+  sql: string
+  params: any[]
+
+  constructor(sql?: string, params?: any[]) {
     this.sql = sql || ""
     this.params = params || []
   }
 
-  // Append a string (just sql), [sql, params], SqlFragment or plain object (has sql and params)
-  append(val: any, params: any) {
+  /** Append a string (just sql), [sql, params], SqlFragment or plain object (has sql and params) */
+  append(val: string, params?: any[]): SqlFragment
+  append(val: SqlFragment): SqlFragment
+  append(val: [string, any[]]): SqlFragment
+  append(val: { sql: string; params?: any[] }): SqlFragment
+  append(val: any, params?: any) {
     if (_.isString(val)) {
       this.sql += val
       this.params = this.params.concat(params || [])
@@ -20,18 +27,18 @@ export default class SqlFragment {
     return this
   }
 
-  isEmpty() {
+  isEmpty(): boolean {
     return this.sql.length === 0
   }
 
-  static join(list: any, joiner: any) {
+  static join(list: (SqlFragment | { sql: string; params?: any[] })[], joiner: string): SqlFragment {
     return new SqlFragment(_.map(list, (fr: any) => fr.sql).join(joiner), [].concat.apply([], _.pluck(list, "params")))
   }
 
-  // Make into sql with parameters inlined
-  toInline() {
+  /** Make into sql with parameters inlined */
+  toInline(): string {
     // Escapes a literal value
-    function escapeLiteral(val: any) {
+    function escapeLiteral(val: any): string {
       if (val === null) {
         return "null"
       }
