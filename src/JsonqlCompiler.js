@@ -1,3 +1,5 @@
+// TODO: This file was created by bulk-decaffeinate.
+// Sanity-check the conversion and remove this comment.
 let JsonqlCompiler;
 import _ from 'lodash';
 import SqlFragment from './SqlFragment';
@@ -675,4 +677,6 @@ export default JsonqlCompiler = class JsonqlCompiler {
   }
 };
 
-var isInt = x => (typeof(x)==='number') && ((x%1) === 0);
+function isInt(x) {
+  return typeof(x)==='number' && (x%1) === 0;
+}

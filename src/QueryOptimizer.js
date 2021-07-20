@@ -1,3 +1,5 @@
+// TODO: This file was created by bulk-decaffeinate.
+// Sanity-check the conversion and remove this comment.
 let QueryOptimizer;
 import _ from 'lodash';
 
@@ -27,11 +29,7 @@ See the tests for examples of all three re-writings. The speed difference is 100
 */
 
 export default QueryOptimizer = class QueryOptimizer {
-
   constructor() {
-    // Next table alias number
-    this.extractFields = this.extractFields.bind(this);
-    this.isAggr = this.isAggr.bind(this);
     this.aliasNum = 0;
   }
 
@@ -453,7 +451,7 @@ export default QueryOptimizer = class QueryOptimizer {
     return null;
   }
 
-  
+
   // Change a specific alias to another one
   changeAlias(frag, fromAlias, toAlias) {
     if (!frag || !frag.type) {
@@ -542,7 +540,7 @@ export default QueryOptimizer = class QueryOptimizer {
   }
 
   // Extract all jsonql field expressions from a jsonql fragment
-  extractFields(frag) {
+  extractFields = frag => {
     if (!frag || !frag.type) {
       return [];
     }
@@ -565,10 +563,10 @@ export default QueryOptimizer = class QueryOptimizer {
       default:
         throw new Error(`Unsupported extractFields with type ${frag.type}`);
     }
-  }
+  };
 
   // Determine if expression is aggregate
-  isAggr(expr) {
+  isAggr = expr => {
     if (!expr || !expr.type) {
       return false;
     }
@@ -592,7 +590,7 @@ export default QueryOptimizer = class QueryOptimizer {
       default:
         throw new Error(`Unsupported isAggr with type ${expr.type}`);
     }
-  }
+  };
 
   // Remap fields a.b1 to format <tableAlias>.opt_a_b1
   remapFields(frag, fields, scalar, tableAlias) {

@@ -1,3 +1,5 @@
+// TODO: This file was created by bulk-decaffeinate.
+// Sanity-check the conversion and remove this comment.
 let SqlFragment;
 import _ from 'lodash';
 
@@ -32,7 +34,7 @@ export default SqlFragment = class SqlFragment {
   // Make into sql with parameters inlined
   toInline() {
     // Escapes a literal value
-    var escapeLiteral = function(val) {
+    function escapeLiteral(val) {
       if (val === null) {
         return "null";
       }
@@ -62,7 +64,7 @@ export default SqlFragment = class SqlFragment {
       }
 
       throw new Error("Unsupported literal value: " + val);
-    };
+    }
 
     // Substitute parameters
     let n = 0;
@@ -80,11 +82,11 @@ export default SqlFragment = class SqlFragment {
   }
 };
 
-var escapeString = function(val) {
+function escapeString(val) {
   const backslash = ~val.indexOf('\\');
   const prefix = backslash ? 'E' : '';
   val = val.replace(/'/g, '\'\'');
   val = val.replace(/\\/g, '\\\\');
   return prefix + '\'' + val + '\'';
-};
+}
   

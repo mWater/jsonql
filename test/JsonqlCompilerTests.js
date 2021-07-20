@@ -1,3 +1,5 @@
+// TODO: This file was created by bulk-decaffeinate.
+// Sanity-check the conversion and remove this comment.
 import { assert } from 'chai';
 import SqlFragment from '../src/SqlFragment';
 import SchemaMap from '../src/SchemaMap';

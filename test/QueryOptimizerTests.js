@@ -1,8 +1,10 @@
+// TODO: This file was created by bulk-decaffeinate.
+// Sanity-check the conversion and remove this comment.
 import { assert } from 'chai';
 import QueryOptimizer from '../src/QueryOptimizer';
 import canonical from 'canonical-json';
 
-const compare = function(actual, expected) {
+function compare(actual, expected) {
   const strActual = canonical(actual);
   const strExpected = canonical(expected);
   if (strActual !== strExpected) {
@@ -15,7 +17,7 @@ const compare = function(actual, expected) {
     }
   }
   return assert.equal(canonical(actual), canonical(expected), "\ngot: " + canonical(actual) + "\nexp: " + canonical(expected) + "\n");
-};
+}
 
 describe("QueryOptimizer", function() {
   beforeEach(function() {
