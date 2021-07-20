@@ -1,589 +1,678 @@
-_ = require 'lodash'
-SqlFragment = require './SqlFragment'
-QueryOptimizer = require './QueryOptimizer'
+let JsonqlCompiler;
+import _ from 'lodash';
+import SqlFragment from './SqlFragment';
+import QueryOptimizer from './QueryOptimizer';
 
-# Compiles jsonql to sql
-module.exports = class JsonqlCompiler 
-  constructor: (schemaMap, optimizeQueries = false) ->
-    @schemaMap = schemaMap
-    @nextId = 1
+// Compiles jsonql to sql
+export default JsonqlCompiler = class JsonqlCompiler { 
+  constructor(schemaMap, optimizeQueries = false) {
+    this.schemaMap = schemaMap;
+    this.nextId = 1;
 
-    @optimizeQueries = optimizeQueries
+    this.optimizeQueries = optimizeQueries;
+  }
 
-  # Compile a query (or union of queries) made up of selects, from, where, order, limit, skip
-  # `aliases` are aliases to tables which have a particular row already selected
-  # for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
-  # expression, so it already has a row selected.
-  # ctes are aliases for common table expressions. They are a map of alias to true
-  compileQuery: (query, aliases = {}, ctes = {}) ->
-    # If union, handle that
-    if query.type == "union"
-      return SqlFragment.join(_.map(query.queries, (q) =>
-        new SqlFragment("(").append(@compileQuery(q, aliases, ctes)).append(")")
-        ), " union ")
+  // Compile a query (or union of queries) made up of selects, from, where, order, limit, skip
+  // `aliases` are aliases to tables which have a particular row already selected
+  // for example, a subquery can use a value from a parent table (parent_table.some_column) as a scalar
+  // expression, so it already has a row selected.
+  // ctes are aliases for common table expressions. They are a map of alias to true
+  compileQuery(query, aliases = {}, ctes = {}) {
+    // If union, handle that
+    let from;
+    if (query.type === "union") {
+      return SqlFragment.join(_.map(query.queries, q => {
+        return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")");
+        }), " union ");
+    }
 
-    # If union all, handle that
-    if query.type == "union all"
-      return SqlFragment.join(_.map(query.queries, (q) =>
-        new SqlFragment("(").append(@compileQuery(q, aliases, ctes)).append(")")
-        ), " union all ")
+    // If union all, handle that
+    if (query.type === "union all") {
+      return SqlFragment.join(_.map(query.queries, q => {
+        return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")");
+        }), " union all ");
+    }
 
-    # Optimize query first
-    if @optimizeQueries
-      query = new QueryOptimizer().optimizeQuery(query)
+    // Optimize query first
+    if (this.optimizeQueries) {
+      query = new QueryOptimizer().optimizeQuery(query);
+    }
 
-    frag = new SqlFragment()
+    const frag = new SqlFragment();
 
-    # Make a copy for use internally
-    aliases = _.clone(aliases)
-    ctes = _.clone(ctes)
+    // Make a copy for use internally
+    aliases = _.clone(aliases);
+    ctes = _.clone(ctes);
 
-    # Compile withs
-    if query.withs and query.withs.length > 0
-      withClauses = []
-      for w in query.withs
-        f = new SqlFragment('"').append(@schemaMap.mapTableAlias(w.alias))
-        f.append("\" as (")
-        f.append(@compileQuery(w.query, aliases))
-        f.append(")")
-        withClauses.push(f)
+    // Compile withs
+    if (query.withs && (query.withs.length > 0)) {
+      const withClauses = [];
+      for (let w of query.withs) {
+        const f = new SqlFragment('"').append(this.schemaMap.mapTableAlias(w.alias));
+        f.append("\" as (");
+        f.append(this.compileQuery(w.query, aliases));
+        f.append(")");
+        withClauses.push(f);
 
-        # Add to cte tables
-        if ctes[w.alias]
-          throw new Error("CTE alias #{w.alias} in use")
+        // Add to cte tables
+        if (ctes[w.alias]) {
+          throw new Error(`CTE alias ${w.alias} in use`);
+        }
 
-        ctes[w.alias] = true
+        ctes[w.alias] = true;
+      }
 
-      frag.append("with ")
-      frag.append(SqlFragment.join(withClauses, ", "))
-      frag.append(" ")
+      frag.append("with ");
+      frag.append(SqlFragment.join(withClauses, ", "));
+      frag.append(" ");
+    }
 
-    frag.append('select ')
+    frag.append('select ');
 
-    if query.distinct
-      frag.append('distinct ')
+    if (query.distinct) {
+      frag.append('distinct ');
+    }
 
-    # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    if query.from
-      from = @compileFrom(query.from, aliases, ctes)
-    else
-      from = null
+    // Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
+    if (query.from) {
+      from = this.compileFrom(query.from, aliases, ctes);
+    } else {
+      from = null;
+    }
 
-    # Compile selects
-    selects = _.map(query.selects, (s) => @compileSelect(s, aliases, ctes))
+    // Compile selects
+    const selects = _.map(query.selects, s => this.compileSelect(s, aliases, ctes));
 
-    # Handle null select
-    if selects.length == 0
-      frag.append("null")
-    else
-      frag.append(SqlFragment.join(selects, ", "))
+    // Handle null select
+    if (selects.length === 0) {
+      frag.append("null");
+    } else {
+      frag.append(SqlFragment.join(selects, ", "));
+    }
 
-    # Add from
-    if from
-      frag.append(" from ")
-      frag.append(from)
+    // Add from
+    if (from) {
+      frag.append(" from ");
+      frag.append(from);
+    }
 
-    # Add where
-    if query.where?
-      where = @compileExpr(query.where, aliases, ctes)
-      if not where.isEmpty()
-        frag.append(" where ")
-        frag.append(where)
+    // Add where
+    if (query.where != null) {
+      const where = this.compileExpr(query.where, aliases, ctes);
+      if (!where.isEmpty()) {
+        frag.append(" where ");
+        frag.append(where);
+      }
+    }
 
-    # Add group by
-    if query.groupBy
-      if query.groupBy.length > 0
-        frag.append(" group by ")
+    // Add group by
+    if (query.groupBy) {
+      if (query.groupBy.length > 0) {
+        frag.append(" group by ");
+      }
 
-      # Check that array
-      if not _.isArray(query.groupBy)
-        throw new Error("Invalid groupBy")
+      // Check that array
+      if (!_.isArray(query.groupBy)) {
+        throw new Error("Invalid groupBy");
+      }
 
-      frag.append(SqlFragment.join(_.map(query.groupBy, (groupBy) =>
-        if isInt(groupBy)
-          return new SqlFragment("#{groupBy}")
-        return @compileExpr(groupBy, aliases, ctes)
-        ), ", "))
+      frag.append(SqlFragment.join(_.map(query.groupBy, groupBy => {
+        if (isInt(groupBy)) {
+          return new SqlFragment(`${groupBy}`);
+        }
+        return this.compileExpr(groupBy, aliases, ctes);
+        }), ", "));
+    }
 
-    # Add order by
-    if query.orderBy
-      frag.append(@compileOrderBy(query.orderBy, aliases))
+    // Add order by
+    if (query.orderBy) {
+      frag.append(this.compileOrderBy(query.orderBy, aliases));
+    }
 
-    # Add limit
-    if query.limit?
-      # Check that is int
-      if not isInt(query.limit)
-        throw new Error("Invalid limit")
+    // Add limit
+    if (query.limit != null) {
+      // Check that is int
+      if (!isInt(query.limit)) {
+        throw new Error("Invalid limit");
+      }
       frag.append(" limit ")
-        .append(new SqlFragment("?", [query.limit]))
+        .append(new SqlFragment("?", [query.limit]));
+    }
 
-    # Add offset
-    if query.offset?
-      # Check that is int
-      if not isInt(query.offset)
-        throw new Error("Invalid offset")
+    // Add offset
+    if (query.offset != null) {
+      // Check that is int
+      if (!isInt(query.offset)) {
+        throw new Error("Invalid offset");
+      }
       frag.append(" offset ")
-        .append(new SqlFragment("?", [query.offset]))
+        .append(new SqlFragment("?", [query.offset]));
+    }
 
-    return frag
+    return frag;
+  }
 
-  # select is { expr: <expr>, alias: <string> }
-  # aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
-  compileSelect: (select, aliases, ctes = {}) ->
-    # Add legacy over to expr
-    expr = select.expr
-    if select.over
-      expr = _.extend({}, expr, over: select.over)
+  // select is { expr: <expr>, alias: <string> }
+  // aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
+  compileSelect(select, aliases, ctes = {}) {
+    // Add legacy over to expr
+    let {
+      expr
+    } = select;
+    if (select.over) {
+      expr = _.extend({}, expr, {over: select.over});
+    }
 
-    frag = @compileExpr(expr, aliases, ctes)
+    const frag = this.compileExpr(expr, aliases, ctes);
 
-    frag.append(" as ")
+    frag.append(" as ");
 
-    @validateAlias(select.alias)
-    frag.append('"' + select.alias + '"')
+    this.validateAlias(select.alias);
+    frag.append('"' + select.alias + '"');
 
-    return frag
+    return frag;
+  }
 
-  # Compiles table or join returning sql and modifying aliases
-  # ctes are aliases for common table expressions. They are a map of alias to true
-  compileFrom: (from, aliases = {}, ctes = {}) ->
-    # TODO check that alias is not repeated in from
-    switch from.type 
-      when "table"
-        # Validate alias
-        @validateAlias(from.alias)
+  // Compiles table or join returning sql and modifying aliases
+  // ctes are aliases for common table expressions. They are a map of alias to true
+  compileFrom(from, aliases = {}, ctes = {}) {
+    // TODO check that alias is not repeated in from
+    switch (from.type) { 
+      case "table":
+        // Validate alias
+        this.validateAlias(from.alias);
 
-        # If from cte, alias to true
-        if ctes[from.table]
-          aliases[from.alias] = true
+        // If from cte, alias to true
+        if (ctes[from.table]) {
+          aliases[from.alias] = true;
 
-          # Reference the CTE by its alias and alias the resulting table
-          return new SqlFragment(@schemaMap.mapTableAlias(from.table))
+          // Reference the CTE by its alias and alias the resulting table
+          return new SqlFragment(this.schemaMap.mapTableAlias(from.table))
             .append(' as "')
-            .append(@schemaMap.mapTableAlias(from.alias))
-            .append('"')
+            .append(this.schemaMap.mapTableAlias(from.alias))
+            .append('"');
+        }
 
-        # Save alias
-        aliases[from.alias] = from.table
-        return @schemaMap.mapTable(from.table).append(new SqlFragment(' as "' + @schemaMap.mapTableAlias(from.alias) + '"'))
+        // Save alias
+        aliases[from.alias] = from.table;
+        return this.schemaMap.mapTable(from.table).append(new SqlFragment(' as "' + this.schemaMap.mapTableAlias(from.alias) + '"'));
 
-      when "join"
-        # Compile left and right
-        left = @compileFrom(from.left, aliases, ctes)
-        right = @compileFrom(from.right, aliases, ctes)
+      case "join":
+        // Compile left and right
+        var left = this.compileFrom(from.left, aliases, ctes);
+        var right = this.compileFrom(from.right, aliases, ctes);
 
-        # Make sure aliases don't overlap
-        if _.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0
-          throw new Error("Duplicate aliases")
+        // Make sure aliases don't overlap
+        if (_.intersection(_.keys(left.aliases), _.keys(right.aliases)).length > 0) {
+          throw new Error("Duplicate aliases");
+        }
 
-        _.extend(aliases, left.aliases)
-        _.extend(aliases, right.aliases)
+        _.extend(aliases, left.aliases);
+        _.extend(aliases, right.aliases);
 
-        # Ensure that on is present for non-cross
-        if from.kind != "cross" and not from.on?
-          throw new Error("Missing on clause for non-cross join")
+        // Ensure that on is present for non-cross
+        if ((from.kind !== "cross") && (from.on == null)) {
+          throw new Error("Missing on clause for non-cross join");
+        }
           
-        # Compile on
-        onSql = if from.on then @compileExpr(from.on, aliases, ctes)
+        // Compile on
+        var onSql = from.on ? this.compileExpr(from.on, aliases, ctes) : undefined;
 
-        if from.kind not in ['inner', 'left', 'right', 'full', 'cross']
-          throw new Error("Unsupported join kind #{from.kind}")
+        if (!['inner', 'left', 'right', 'full', 'cross'].includes(from.kind)) {
+          throw new Error(`Unsupported join kind ${from.kind}`);
+        }
 
-        # Combine
-        frag = new SqlFragment("(")
+        // Combine
+        var frag = new SqlFragment("(")
             .append(left)
             .append(" " + from.kind + " join ")
-            .append(right)
-        if onSql
-          frag.append(" on ").append(onSql)
+            .append(right);
+        if (onSql) {
+          frag.append(" on ").append(onSql);
+        }
         
-        frag.append(")")
+        frag.append(")");
 
-        return frag
+        return frag;
 
-      when "subquery"
-        # Validate alias
-        @validateAlias(from.alias)
+      case "subquery":
+        // Validate alias
+        this.validateAlias(from.alias);
 
-        # If alias already in use, refuse
-        if aliases[from.alias]?
-          throw new Error("Alias #{from.alias} in use")
+        // If alias already in use, refuse
+        if (aliases[from.alias] != null) {
+          throw new Error(`Alias ${from.alias} in use`);
+        }
 
-        # Compile query
-        subquery = @compileQuery(from.query, aliases, ctes)
+        // Compile query
+        var subquery = this.compileQuery(from.query, aliases, ctes);
 
-        # Get list of fields of subquery
-        fields = _.map(from.query.selects, (s) -> s.alias)
+        // Get list of fields of subquery
+        var fields = _.map(from.query.selects, s => s.alias);
         
-        # Record alias as true to allow any field to be queried
-        aliases[from.alias] = true
+        // Record alias as true to allow any field to be queried
+        aliases[from.alias] = true;
 
         return new SqlFragment("(").append(subquery)
           .append(') as "')
-          .append(@schemaMap.mapTableAlias(from.alias))
-          .append('"')
+          .append(this.schemaMap.mapTableAlias(from.alias))
+          .append('"');
 
-      when "subexpr"
-        # Validate alias
-        @validateAlias(from.alias)
+      case "subexpr":
+        // Validate alias
+        this.validateAlias(from.alias);
 
-        # If alias already in use, refuse
-        if aliases[from.alias]?
-          throw new Error("Alias #{from.alias} in use")
+        // If alias already in use, refuse
+        if (aliases[from.alias] != null) {
+          throw new Error(`Alias ${from.alias} in use`);
+        }
 
-        # Compile expression
-        subexpr = @compileExpr(from.expr, aliases, ctes)
+        // Compile expression
+        var subexpr = this.compileExpr(from.expr, aliases, ctes);
 
-        # Record alias as true to allow any field to be queried
-        aliases[from.alias] = true
+        // Record alias as true to allow any field to be queried
+        aliases[from.alias] = true;
 
         return subexpr.append(' as "')
-          .append(@schemaMap.mapTableAlias(from.alias))
-          .append('"')
+          .append(this.schemaMap.mapTableAlias(from.alias))
+          .append('"');
 
-      else
-        throw new Error("Unsupported type #{from.type} in #{JSON.stringify(from)}")
+      default:
+        throw new Error(`Unsupported type ${from.type} in ${JSON.stringify(from)}`);
+    }
+  }
 
-  compileOrderBy: (orderBy, aliases) ->
-    frag = new SqlFragment()
+  compileOrderBy(orderBy, aliases) {
+    const frag = new SqlFragment();
 
-    if not _.isArray(orderBy)
-      throw new Error("Invalid orderBy")
+    if (!_.isArray(orderBy)) {
+      throw new Error("Invalid orderBy");
+    }
 
-    if not _.all(orderBy, (o) =>
-        if not isInt(o.ordinal) and not o.expr
-          return false
+    if (!_.all(orderBy, o => {
+        if (!isInt(o.ordinal) && !o.expr) {
+          return false;
+        }
 
-        return not o.direction? or o.direction in ['asc', 'desc']
-      )
-      throw new Error("Invalid orderBy")
+        return (o.direction == null) || ['asc', 'desc'].includes(o.direction);
+      })) {
+      throw new Error("Invalid orderBy");
+    }
 
-    if orderBy.length > 0
+    if (orderBy.length > 0) {
       frag.append(" order by ")
-        .append(SqlFragment.join(_.map(orderBy, (o) => 
-          if _.isNumber(o.ordinal)
-            f = new SqlFragment("#{o.ordinal}")
-          else
-            f = @compileExpr(o.expr, aliases)
-          if o.direction
-            f.append(" " + o.direction)
-          if o.nulls and o.nulls in ['first', 'last']
-            f.append(" nulls #{o.nulls}")
-          return f
-        ), ", "))
-    return frag
+        .append(SqlFragment.join(_.map(orderBy, o => { 
+          let f;
+          if (_.isNumber(o.ordinal)) {
+            f = new SqlFragment(`${o.ordinal}`);
+          } else {
+            f = this.compileExpr(o.expr, aliases);
+          }
+          if (o.direction) {
+            f.append(" " + o.direction);
+          }
+          if (o.nulls && ['first', 'last'].includes(o.nulls)) {
+            f.append(` nulls ${o.nulls}`);
+          }
+          return f;
+        }), ", "));
+    }
+    return frag;
+  }
 
-  # Compiles an expression
-  # aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
-  compileExpr: (expr, aliases, ctes = {}) ->
-    if not aliases?
-      throw new Error("Missing aliases")
+  // Compiles an expression
+  // aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
+  compileExpr(expr, aliases, ctes = {}) {
+    if ((aliases == null)) {
+      throw new Error("Missing aliases");
+    }
 
-    if not expr?
-      return new SqlFragment("null")
+    if ((expr == null)) {
+      return new SqlFragment("null");
+    }
 
-    # Literals
-    if typeof(expr) in ["number", "string", "boolean"]
-      return new SqlFragment("?", [expr])
+    // Literals
+    if (["number", "string", "boolean"].includes(typeof(expr))) {
+      return new SqlFragment("?", [expr]);
+    }
 
-    switch expr.type
-      when "literal"
-        return new SqlFragment("?", [expr.value])
-      when "op"
-        return @compileOpExpr(expr, aliases, ctes)
-      when "field"
-        # Check that alias exists
-        if not aliases[expr.tableAlias]?
-          throw new Error("Alias #{expr.tableAlias} unknown")
+    switch (expr.type) {
+      case "literal":
+        return new SqlFragment("?", [expr.value]);
+      case "op":
+        return this.compileOpExpr(expr, aliases, ctes);
+      case "field":
+        // Check that alias exists
+        if ((aliases[expr.tableAlias] == null)) {
+          throw new Error(`Alias ${expr.tableAlias} unknown`);
+        }
 
-        # If is true (that is, from a CTE or subquery), allow all but validate column
-        if aliases[expr.tableAlias] == true
-          # If using column, put x."y"
-          if expr.column
-            if not expr.column.match(/^[a-z][a-z0-9_]*$/)
-              throw new Error("Invalid column #{expr.column}")
-            return new SqlFragment(@schemaMap.mapTableAlias(expr.tableAlias)).append('."').append(expr.column).append('"')
-          else # Entire row
-            return new SqlFragment(@schemaMap.mapTableAlias(expr.tableAlias))
+        // If is true (that is, from a CTE or subquery), allow all but validate column
+        if (aliases[expr.tableAlias] === true) {
+          // If using column, put x."y"
+          if (expr.column) {
+            if (!expr.column.match(/^[a-z][a-z0-9_]*$/)) {
+              throw new Error(`Invalid column ${expr.column}`);
+            }
+            return new SqlFragment(this.schemaMap.mapTableAlias(expr.tableAlias)).append('."').append(expr.column).append('"');
+          } else { // Entire row
+            return new SqlFragment(this.schemaMap.mapTableAlias(expr.tableAlias));
+          }
+        }
 
-        return @schemaMap.mapColumn(aliases[expr.tableAlias], expr.column, @schemaMap.mapTableAlias(expr.tableAlias))
-      when "scalar"
-        return @compileScalar(expr, aliases, ctes)
-      when "token"
-        if expr.token in ["!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"]
-          return new SqlFragment(expr.token)
-        throw new Error("Unsupported token #{expr.token}")
-      when "case"
-        return @compileCaseExpr(expr, aliases, ctes)
-      else
-        throw new Error("Unsupported type #{expr.type} in #{JSON.stringify(expr)}")
+        return this.schemaMap.mapColumn(aliases[expr.tableAlias], expr.column, this.schemaMap.mapTableAlias(expr.tableAlias));
+      case "scalar":
+        return this.compileScalar(expr, aliases, ctes);
+      case "token":
+        if (["!bbox!", "!scale_denominator!", "!pixel_width!", "!pixel_height!"].includes(expr.token)) {
+          return new SqlFragment(expr.token);
+        }
+        throw new Error(`Unsupported token ${expr.token}`);
+      case "case":
+        return this.compileCaseExpr(expr, aliases, ctes);
+      default:
+        throw new Error(`Unsupported type ${expr.type} in ${JSON.stringify(expr)}`);
+    }
+  }
 
-  # Compiles an op expression
-  compileOpExpr: (expr, aliases, ctes = {}) ->
-    functions = [
-      "avg"
-      "min"
-      "max"
-      "sum"
-      "count"
-      "stdev"
-      "stdevp"
-      "var"
-      "varp"
-      "row_number"
-      "left"
-      "right"
-      "substr"
-      "lpad"
-      "rpad"
-      "width_bucket"
-      "ntile"
-      "coalesce"
-      "to_json"
-      "to_jsonb"
-      "to_char"
-      "convert_to_decimal"  # Custom function used for safely converting to decimal
-      "json_build_array"
-      "json_build_object"
-      "jsonb_build_array"
-      "jsonb_build_object"
-      "json_array_length"
-      "jsonb_array_length"
-      "json_object"
-      "json_array_elements"
-      "jsonb_array_elements"
-      "json_array_elements_text"
-      "jsonb_array_elements_text"
-      "json_typeof"
-      "jsonb_typeof"
-      "array_to_string"
-      "array_agg"
-      "lower"
-      "upper"
-      "round"
-      "ceiling"
-      "floor"
-      "date_part"
-      "json_strip_nulls"
-      "jsonb_strip_nulls"
-      "cos"
-      "sin"
-      "nullif"
-      "log"
-      "ln"
-      "unnest"
-      "now"
-      "split_part"
-      "chr"
-      "least"
-      "greatest"
-      "bool_or"
+  // Compiles an op expression
+  compileOpExpr(expr, aliases, ctes = {}) {
+    let inner;
+    const functions = [
+      "avg",
+      "min",
+      "max",
+      "sum",
+      "count",
+      "stdev",
+      "stdevp",
+      "var",
+      "varp",
+      "row_number",
+      "left",
+      "right",
+      "substr",
+      "lpad",
+      "rpad",
+      "width_bucket",
+      "ntile",
+      "coalesce",
+      "to_json",
+      "to_jsonb",
+      "to_char",
+      "convert_to_decimal",  // Custom function used for safely converting to decimal
+      "json_build_array",
+      "json_build_object",
+      "jsonb_build_array",
+      "jsonb_build_object",
+      "json_array_length",
+      "jsonb_array_length",
+      "json_object",
+      "json_array_elements",
+      "jsonb_array_elements",
+      "json_array_elements_text",
+      "jsonb_array_elements_text",
+      "json_typeof",
+      "jsonb_typeof",
+      "array_to_string",
+      "array_agg",
+      "lower",
+      "upper",
+      "round",
+      "ceiling",
+      "floor",
+      "date_part",
+      "json_strip_nulls",
+      "jsonb_strip_nulls",
+      "cos",
+      "sin",
+      "nullif",
+      "log",
+      "ln",
+      "unnest",
+      "now",
+      "split_part",
+      "chr",
+      "least",
+      "greatest",
+      "bool_or",
       "bool_and"
-    ]
+    ];
 
-    switch expr.op
-      when ">", "<", ">=", "<=", "=", "<>", "/", "~", "~*", "like", "ilike", "&&", "->>", "#>>", "@>", "<@", '->', '#>', 'in', '?|', "?&"
-        frag = new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
-          .append(new SqlFragment(" " + expr.op + " "))
+    switch (expr.op) {
+      case ">": case "<": case ">=": case "<=": case "=": case "<>": case "/": case "~": case "~*": case "like": case "ilike": case "&&": case "->>": case "#>>": case "@>": case "<@": case '->': case '#>': case 'in': case '?|': case "?&":
+        var frag = new SqlFragment("(")
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(new SqlFragment(" " + expr.op + " "));
 
-        if expr.modifier in ['any', 'all']
+        if (['any', 'all'].includes(expr.modifier)) {
           frag.append(expr.modifier).append("(")
-            .append(@compileExpr(expr.exprs[1], aliases, ctes))
-            .append("))")
-        else
-          frag.append(@compileExpr(expr.exprs[1], aliases, ctes))
-            .append(")")
-        return frag
-      when "and", "or", "+", "-", "*", "||"
-        compiledExprs = _.map(expr.exprs, (e) => @compileExpr(e, aliases, ctes))
+            .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+            .append("))");
+        } else {
+          frag.append(this.compileExpr(expr.exprs[1], aliases, ctes))
+            .append(")");
+        }
+        return frag;
+      case "and": case "or": case "+": case "-": case "*": case "||":
+        var compiledExprs = _.map(expr.exprs, e => this.compileExpr(e, aliases, ctes));
 
-        # Remove blanks
-        compiledExprs = _.filter(compiledExprs, (e) -> not e.isEmpty())
+        // Remove blanks
+        compiledExprs = _.filter(compiledExprs, e => !e.isEmpty());
 
-        if compiledExprs.length == 0
-          return new SqlFragment()
-        else if compiledExprs.length == 1
-          return compiledExprs[0]
-        else 
-          inner = SqlFragment.join(compiledExprs, " " + expr.op + " ")
-          return new SqlFragment("(").append(inner).append(")")
-      when "is null", "is not null"
+        if (compiledExprs.length === 0) {
+          return new SqlFragment();
+        } else if (compiledExprs.length === 1) {
+          return compiledExprs[0];
+        } else { 
+          inner = SqlFragment.join(compiledExprs, " " + expr.op + " ");
+          return new SqlFragment("(").append(inner).append(")");
+        }
+      case "is null": case "is not null":
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(new SqlFragment(" " + expr.op))
-          .append(")")
-      when "not"
+          .append(")");
+      case "not":
         return new SqlFragment("(not ")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
-          .append(")")
-      when "between"
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(")");
+      case "between":
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(" between ")
-          .append(@compileExpr(expr.exprs[1], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
           .append(" and ")
-          .append(@compileExpr(expr.exprs[2], aliases, ctes))
-          .append(")")
-      when "::text", "::geometry", "::geography", "::uuid", "::integer", "::decimal", "::date", "::timestamp", "::boolean", "::uuid[]", "::text[]", "::json", "::jsonb", "::jsonb[]", "::spheroid", "::numeric", "::integer[]"
+          .append(this.compileExpr(expr.exprs[2], aliases, ctes))
+          .append(")");
+      case "::text": case "::geometry": case "::geography": case "::uuid": case "::integer": case "::decimal": case "::date": case "::timestamp": case "::boolean": case "::uuid[]": case "::text[]": case "::json": case "::jsonb": case "::jsonb[]": case "::spheroid": case "::numeric": case "::integer[]":
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(expr.op)
-          .append(")")
-      when "exists"
+          .append(")");
+      case "exists":
         return new SqlFragment("exists (")
-          .append(@compileQuery(expr.exprs[0], aliases, ctes))
-          .append(")")
-      when "[]"
+          .append(this.compileQuery(expr.exprs[0], aliases, ctes))
+          .append(")");
+      case "[]":
         return new SqlFragment("((")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(")[")
-          .append(@compileExpr(expr.exprs[1], aliases, ctes))
-          .append("])")
-      when "interval"
+          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+          .append("])");
+      case "interval":
         return new SqlFragment("(interval ")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
-          .append(")")
-      when "at time zone"
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(")");
+      case "at time zone":
         return new SqlFragment("(")
-          .append(@compileExpr(expr.exprs[0], aliases, ctes))
+          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(" at time zone ")
-          .append(@compileExpr(expr.exprs[1], aliases, ctes))
-          .append(")")
-      else
-        # Whitelist known functions and all PostGIS and CartoDb and mwater
-        if expr.op in functions or expr.op.match(/^ST_[a-zA-z]+$/) or expr.op.match(/^CDB_[a-zA-z]+$/) or expr.op.match(/^mwater_[a-zA-z_]+$/)
-          inner = SqlFragment.join(_.map(expr.exprs, (e) => @compileExpr(e, aliases, ctes)), ", ")
+          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+          .append(")");
+      default:
+        // Whitelist known functions and all PostGIS and CartoDb and mwater
+        if (functions.includes(expr.op) || expr.op.match(/^ST_[a-zA-z]+$/) || expr.op.match(/^CDB_[a-zA-z]+$/) || expr.op.match(/^mwater_[a-zA-z_]+$/)) {
+          inner = SqlFragment.join(_.map(expr.exprs, e => this.compileExpr(e, aliases, ctes)), ", ");
 
-          # Handle special case of count(*)
-          if expr.op == "count" and inner.isEmpty()
-            inner = "*"
+          // Handle special case of count(*)
+          if ((expr.op === "count") && inner.isEmpty()) {
+            inner = "*";
+          }
 
-          # Handle orderBy
-          if expr.orderBy
-            inner = inner.append(@compileOrderBy(expr.orderBy, aliases))
+          // Handle orderBy
+          if (expr.orderBy) {
+            inner = inner.append(this.compileOrderBy(expr.orderBy, aliases));
+          }
 
-          if expr.modifier == "distinct"
-            inner = new SqlFragment("distinct ").append(inner)
+          if (expr.modifier === "distinct") {
+            inner = new SqlFragment("distinct ").append(inner);
+          }
 
           frag = new SqlFragment(expr.op + "(")
             .append(inner)
-            .append(")")
+            .append(")");
 
-          if expr.over
-            frag = new SqlFragment("(").append(frag)
-            frag.append(" over (")
-            if expr.over.partitionBy
-              frag.append("partition by ")
+          if (expr.over) {
+            frag = new SqlFragment("(").append(frag);
+            frag.append(" over (");
+            if (expr.over.partitionBy) {
+              frag.append("partition by ");
               frag.append(SqlFragment.join(
-                _.map(expr.over.partitionBy, (pb) => @compileExpr(pb, aliases, ctes)), ", "))
-            if expr.over.orderBy
-              frag.append(@compileOrderBy(expr.over.orderBy, aliases))
-            frag.append("))")
+                _.map(expr.over.partitionBy, pb => this.compileExpr(pb, aliases, ctes)), ", "));
+            }
+            if (expr.over.orderBy) {
+              frag.append(this.compileOrderBy(expr.over.orderBy, aliases));
+            }
+            frag.append("))");
+          }
 
-          return frag
+          return frag;
+        }
 
-        throw new Error("Unsupported op #{expr.op}")
+        throw new Error(`Unsupported op ${expr.op}`);
+    }
+  }
 
-  # Compile a scalar subquery made up of expr, from, where, order, limit, skip
-  compileScalar: (query, aliases, ctes = {}) ->
-    frag = new SqlFragment('(')
+  // Compile a scalar subquery made up of expr, from, where, order, limit, skip
+  compileScalar(query, aliases, ctes = {}) {
+    let from;
+    const frag = new SqlFragment('(');
 
-    # Make a copy for use internally
-    aliases = _.clone(aliases)
-    ctes = _.clone(ctes)
+    // Make a copy for use internally
+    aliases = _.clone(aliases);
+    ctes = _.clone(ctes);
 
-    # Compile withs
-    if query.withs and query.withs.length > 0
-      withClauses = []
-      for w in query.withs
-        f = new SqlFragment('"').append(@schemaMap.mapTableAlias(w.alias))
-        f.append("\" as (")
-        f.append(@compileQuery(w.query, aliases))
-        f.append(")")
-        withClauses.push(f)
+    // Compile withs
+    if (query.withs && (query.withs.length > 0)) {
+      const withClauses = [];
+      for (let w of query.withs) {
+        const f = new SqlFragment('"').append(this.schemaMap.mapTableAlias(w.alias));
+        f.append("\" as (");
+        f.append(this.compileQuery(w.query, aliases));
+        f.append(")");
+        withClauses.push(f);
 
-        # Add to cte tables
-        if ctes[w.alias]
-          throw new Error("CTE alias #{w.alias} in use")
+        // Add to cte tables
+        if (ctes[w.alias]) {
+          throw new Error(`CTE alias ${w.alias} in use`);
+        }
 
-        ctes[w.alias] = true
+        ctes[w.alias] = true;
+      }
 
-      frag.append("with ")
-      frag.append(SqlFragment.join(withClauses, ", "))
-      frag.append(" ")
+      frag.append("with ");
+      frag.append(SqlFragment.join(withClauses, ", "));
+      frag.append(" ");
+    }
 
-    frag.append('select ')
+    frag.append('select ');
 
-    # Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
-    if query.from
-      from = @compileFrom(query.from, aliases, ctes)
-    else
-      from = null
+    // Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
+    if (query.from) {
+      from = this.compileFrom(query.from, aliases, ctes);
+    } else {
+      from = null;
+    }
 
-    # Compile single select expression
-    frag.append(@compileExpr(query.expr, aliases, ctes))
+    // Compile single select expression
+    frag.append(this.compileExpr(query.expr, aliases, ctes));
 
-    # Add from
-    if from
-      frag.append(" from ")
-      frag.append(from)
+    // Add from
+    if (from) {
+      frag.append(" from ");
+      frag.append(from);
+    }
 
-    # Add where
-    if query.where?
-      where = @compileExpr(query.where, aliases, ctes)
-      if not where.isEmpty()
-        frag.append(" where ")
-        frag.append(where)
+    // Add where
+    if (query.where != null) {
+      const where = this.compileExpr(query.where, aliases, ctes);
+      if (!where.isEmpty()) {
+        frag.append(" where ");
+        frag.append(where);
+      }
+    }
 
-    # Add order by
-    if query.orderBy
-      frag.append(@compileOrderBy(query.orderBy, aliases))
+    // Add order by
+    if (query.orderBy) {
+      frag.append(this.compileOrderBy(query.orderBy, aliases));
+    }
 
-    # Add limit
-    if query.limit?
-      # Check that is int
-      if not isInt(query.limit)
-        throw new Error("Invalid limit")
+    // Add limit
+    if (query.limit != null) {
+      // Check that is int
+      if (!isInt(query.limit)) {
+        throw new Error("Invalid limit");
+      }
       frag.append(" limit ")
-        .append(new SqlFragment("?", [query.limit]))
+        .append(new SqlFragment("?", [query.limit]));
+    }
 
-    # Add offset
-    if query.offset?
-      # Check that is int
-      if not isInt(query.offset)
-        throw new Error("Invalid offset")
+    // Add offset
+    if (query.offset != null) {
+      // Check that is int
+      if (!isInt(query.offset)) {
+        throw new Error("Invalid offset");
+      }
       frag.append(" offset ")
-        .append(new SqlFragment("?", [query.offset]))
+        .append(new SqlFragment("?", [query.offset]));
+    }
 
-    frag.append(")")
-    return frag
+    frag.append(")");
+    return frag;
+  }
 
-  compileCaseExpr: (expr, aliases, ctes = {}) ->
-    frag = new SqlFragment('case ')
+  compileCaseExpr(expr, aliases, ctes = {}) {
+    const frag = new SqlFragment('case ');
 
-    if expr.input?
-      frag.append(@compileExpr(expr.input, aliases, ctes))
-      frag.append(" ")
+    if (expr.input != null) {
+      frag.append(this.compileExpr(expr.input, aliases, ctes));
+      frag.append(" ");
+    }
 
-    for c in expr.cases
-      frag.append("when ")
-      frag.append(@compileExpr(c.when, aliases, ctes))
-      frag.append(" then ")
-      frag.append(@compileExpr(c.then, aliases, ctes))
-      frag.append(" ")
+    for (let c of expr.cases) {
+      frag.append("when ");
+      frag.append(this.compileExpr(c.when, aliases, ctes));
+      frag.append(" then ");
+      frag.append(this.compileExpr(c.then, aliases, ctes));
+      frag.append(" ");
+    }
 
-    if expr.else?
-      frag.append("else ")
-      frag.append(@compileExpr(expr.else, aliases, ctes))
-      frag.append(" ")
+    if (expr.else != null) {
+      frag.append("else ");
+      frag.append(this.compileExpr(expr.else, aliases, ctes));
+      frag.append(" ");
+    }
 
-    frag.append("end")
+    return frag.append("end");
+  }
 
-  # Validate alias string. Throws if bad
-  validateAlias: (alias) ->
-    if not alias.match(/^[_a-zA-Z][a-zA-Z_0-9. :]*$/)
-      throw new Error("Invalid alias '#{alias}'")
+  // Validate alias string. Throws if bad
+  validateAlias(alias) {
+    if (!alias.match(/^[_a-zA-Z][a-zA-Z_0-9. :]*$/)) {
+      throw new Error(`Invalid alias '${alias}'`);
+    }
+  }
+};
 
-isInt = (x) ->
-  return typeof(x)=='number' and (x%1) == 0
+var isInt = x => (typeof(x)==='number') && ((x%1) === 0);

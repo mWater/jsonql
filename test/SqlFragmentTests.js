@@ -1,44 +1,54 @@
-assert = require('chai').assert
-SqlFragment = require '../src/SqlFragment'
+import { assert } from 'chai';
+import SqlFragment from '../src/SqlFragment';
 
-describe "SqlFragment", ->
-  it 'appends blank', ->
-    fr = new SqlFragment("apple", [1]).append(new SqlFragment())
-    assert.equal fr.sql, "apple"
-    assert.deepEqual fr.params, [1]
+describe("SqlFragment", function() {
+  it('appends blank', function() {
+    const fr = new SqlFragment("apple", [1]).append(new SqlFragment());
+    assert.equal(fr.sql, "apple");
+    return assert.deepEqual(fr.params, [1]);
+});
 
-  it 'appends other', ->
-    fr = new SqlFragment("apple", [1]).append(new SqlFragment("banana", [2]))
-    assert.equal fr.sql, "applebanana"
-    assert.deepEqual fr.params, [1, 2]
+  it('appends other', function() {
+    const fr = new SqlFragment("apple", [1]).append(new SqlFragment("banana", [2]));
+    assert.equal(fr.sql, "applebanana");
+    return assert.deepEqual(fr.params, [1, 2]);
+});
 
-  it 'converts number to inline', ->
-    sql = new SqlFragment("x=?", [2]).toInline()
-    assert.equal sql, "x=2"
+  it('converts number to inline', function() {
+    const sql = new SqlFragment("x=?", [2]).toInline();
+    return assert.equal(sql, "x=2");
+  });
 
-  it 'converts string to inline', ->
-    sql = new SqlFragment("x=?", ["abc"]).toInline()
-    assert.equal sql, "x='abc'"
+  it('converts string to inline', function() {
+    const sql = new SqlFragment("x=?", ["abc"]).toInline();
+    return assert.equal(sql, "x='abc'");
+  });
 
-  it 'converts date to inline', ->
-    date = new Date()
+  it('converts date to inline', function() {
+    const date = new Date();
 
-    sql = new SqlFragment("x=?", [date]).toInline()
-    assert.equal sql, "x='" + date.toISOString() + "'"
+    const sql = new SqlFragment("x=?", [date]).toInline();
+    return assert.equal(sql, "x='" + date.toISOString() + "'");
+  });
 
-  it 'escapes \' to inline', ->
-    sql = new SqlFragment("x=?", ["a'bc"]).toInline()
-    assert.equal sql, "x='a''bc'"
+  it('escapes \' to inline', function() {
+    const sql = new SqlFragment("x=?", ["a'bc"]).toInline();
+    return assert.equal(sql, "x='a''bc'");
+  });
 
-  it 'converts null to inline', ->
-    sql = new SqlFragment("x=?", [null]).toInline()
-    assert.equal sql, "x=null"
+  it('converts null to inline', function() {
+    const sql = new SqlFragment("x=?", [null]).toInline();
+    return assert.equal(sql, "x=null");
+  });
 
-  it 'converts json to inline', ->
-    sql = new SqlFragment("x=?", [{a:"'"}]).toInline()
-    assert.equal sql, '''x=('{"a":"''"}'::json)'''
+  it('converts json to inline', function() {
+    const sql = new SqlFragment("x=?", [{a:"'"}]).toInline();
+    return assert.equal(sql, 'x=(\'{"a":"\'\'"}\'::json)');
+  });
 
-  it 'joins multiple with divider', ->
-    fr = SqlFragment.join([new SqlFragment("a", [1]), new SqlFragment("b", [2])], " and ")
-    assert.equal fr.sql, 'a and b'
-    assert.deepEqual fr.params, [1, 2]
+  return it('joins multiple with divider', function() {
+    const fr = SqlFragment.join([new SqlFragment("a", [1]), new SqlFragment("b", [2])], " and ");
+    assert.equal(fr.sql, 'a and b');
+    return assert.deepEqual(fr.params, [1, 2]);
+});
+});

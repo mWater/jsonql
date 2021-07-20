@@ -1,48 +1,56 @@
-assert = require('chai').assert
-QueryOptimizer = require '../src/QueryOptimizer'
-canonical = require 'canonical-json'
+import { assert } from 'chai';
+import QueryOptimizer from '../src/QueryOptimizer';
+import canonical from 'canonical-json';
 
-compare = (actual, expected) ->
-  strActual = canonical(actual)
-  strExpected = canonical(expected)
-  if strActual != strExpected
-    for i in [0...Math.min(strActual.length, strExpected.length)]
-      if strActual[i] != strExpected[i]
-        console.log "got: " + strActual.substr(Math.max(i - 20, 0), 80)
-        console.log "exp: " + strExpected.substr(Math.max(i - 20, 0), 80)
-        break
-  assert.equal canonical(actual), canonical(expected), "\ngot: " + canonical(actual) + "\nexp: " + canonical(expected) + "\n"
+const compare = function(actual, expected) {
+  const strActual = canonical(actual);
+  const strExpected = canonical(expected);
+  if (strActual !== strExpected) {
+    for (let i = 0, end = Math.min(strActual.length, strExpected.length), asc = 0 <= end; asc ? i < end : i > end; asc ? i++ : i--) {
+      if (strActual[i] !== strExpected[i]) {
+        console.log("got: " + strActual.substr(Math.max(i - 20, 0), 80));
+        console.log("exp: " + strExpected.substr(Math.max(i - 20, 0), 80));
+        break;
+      }
+    }
+  }
+  return assert.equal(canonical(actual), canonical(expected), "\ngot: " + canonical(actual) + "\nexp: " + canonical(expected) + "\n");
+};
 
-describe "QueryOptimizer", ->
-  beforeEach ->
-    @opt = new QueryOptimizer()
+describe("QueryOptimizer", function() {
+  beforeEach(function() {
+    return this.opt = new QueryOptimizer();
+  });
 
-  it 'gets fields', ->
-    expr = { 
-      type: "op"
-      op: "="
+  it('gets fields', function() {
+    const expr = { 
+      type: "op",
+      op: "=",
       exprs: [
-        { type: "field", tableAlias: "a", column: "a1" }
+        { type: "field", tableAlias: "a", column: "a1" },
         { type: "literal", value: 3 }
       ]
-    }
+    };
 
-    compare @opt.extractFields(expr), [{ type: "field", tableAlias: "a", column: "a1" }]
+    return compare(this.opt.extractFields(expr), [{ type: "field", tableAlias: "a", column: "a1" }]);
+});
 
-  it "determines if expr is aggregate", ->
-    assert.isFalse @opt.isAggr({ type: "field", tableAlias: "a", column: "a1" })
-    assert.isFalse @opt.isAggr({ type: "op", op: "+", exprs: [{ type: "field", tableAlias: "a", column: "a1" }, 2] })
-    assert.isTrue @opt.isAggr({ type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "a", column: "a1" }] })
+  it("determines if expr is aggregate", function() {
+    assert.isFalse(this.opt.isAggr({ type: "field", tableAlias: "a", column: "a1" }));
+    assert.isFalse(this.opt.isAggr({ type: "op", op: "+", exprs: [{ type: "field", tableAlias: "a", column: "a1" }, 2] }));
+    return assert.isTrue(this.opt.isAggr({ type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "a", column: "a1" }] }));
+  });
 
-  it "extracts from aliases", ->
-    table = { type: "join", kind: "left", left: { type: "table", table: "a", alias: "A" }, right: { type: "table", table: "b", alias: "B" } }
-    assert.deepEqual @opt.extractFromAliases(table), ["A", "B"]
+  it("extracts from aliases", function() {
+    const table = { type: "join", kind: "left", left: { type: "table", table: "a", alias: "A" }, right: { type: "table", table: "b", alias: "B" } };
+    return assert.deepEqual(this.opt.extractFromAliases(table), ["A", "B"]);
+});
 
-  it "remaps case statements"
-  it "remaps ops"
+  it("remaps case statements");
+  it("remaps ops");
 
-  it 'optimizes simple non-aggr select', ->
-    ###
+  it('optimizes simple non-aggr select', function() {
+    /*
     select a.a1 as s1, (select b.b1 from b as b where b.b2 = a.a2) as s2
     from a as a
     order by a.a3
@@ -58,61 +66,62 @@ describe "QueryOptimizer", ->
     ) as opt1
     order by opt1.opt_a_a3
 
-    ###
-    input = {
-      type: "query"
+    */
+    const input = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" },
         { 
-          type: "select"
+          type: "select",
           expr: { 
-            type: "scalar"
-            expr: { type: "field", tableAlias: "b", column: "b1" }
-            from: { type: "table", table: "b", alias: "b" }
+            type: "scalar",
+            expr: { type: "field", tableAlias: "b", column: "b1" },
+            from: { type: "table", table: "b", alias: "b" },
             where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-          }
+          },
           alias: "s2" 
         }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
-    }
+    };
 
-    output = {
-      type: "query"
+    const output = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" },
         { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "s2" }
-      ]
+      ],
       from: {
-        type: "subquery"
+        type: "subquery",
         query: {
-          type: "query"
+          type: "query",
           selects: [
-            { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
-            { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
-            { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+            { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" },
+            { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" },
+            { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" },
             { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
-          ]
+          ],
           from: { 
-            type: "join"
-            kind: "left"
-            left: { type: "table", table: "a", alias: "a" }
-            right: { type: "table", table: "b", alias: "opt0" }
+            type: "join",
+            kind: "left",
+            left: { type: "table", table: "a", alias: "a" },
+            right: { type: "table", table: "b", alias: "opt0" },
             on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-          }
+          },
           where: null
-        }
+        },
         alias: "opt1"
-      }
-      where: null
+      },
+      where: null,
       orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
-    }
+    };
 
-    compare @opt.rewriteScalar(input), output
+    return compare(this.opt.rewriteScalar(input), output);
+  });
 
-  it 'optimizes simple aggr select', ->
-    ###
+  it('optimizes simple aggr select', function() {
+    /*
     select a.a1 as s1, (select sum(b.b1) from b as b where b.b2 = a.a2) as s2
     from a as a
     order by a.a3
@@ -135,75 +144,76 @@ describe "QueryOptimizer", ->
     ) as opt2
     order by opt2.opt_a_a3
 
-    ###
-    input = {
-      type: "query"
+    */
+    const input = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" },
         { 
-          type: "select"
+          type: "select",
           expr: { 
-            type: "scalar"
-            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }
-            from: { type: "table", table: "b", alias: "b" }
+            type: "scalar",
+            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] },
+            from: { type: "table", table: "b", alias: "b" },
             where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-          }
+          },
           alias: "s2" 
         }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
-    }
+    };
 
-    inner0Query = {
-      type: "query"
+    const inner0Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" },
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       where: null
-    }
+    };
 
-    output = {
-      type: "query"
+    const output = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" },
         { type: "select", expr: { type: "field", tableAlias: "opt2", column: "expr" }, alias: "s2" }
-      ]
+      ],
       from: {
-        type: "subquery"
+        type: "subquery",
         query: {
-          type: "query"
+          type: "query",
           selects: [
-            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" }
-            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
-            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
-            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" },
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" },
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" },
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" },
             { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "opt0", column: "b1" }] }, alias: "expr" }
-          ]
+          ],
           from: { 
-            type: "join"
-            kind: "left"
-            left: { type: "subquery", query: inner0Query, alias: "opt1" }
-            right: { type: "table", table: "b", alias: "opt0" }
+            type: "join",
+            kind: "left",
+            left: { type: "subquery", query: inner0Query, alias: "opt1" },
+            right: { type: "table", table: "b", alias: "opt0" },
             on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
-          }
+          },
           groupBy: [1, 2, 3, 4]
-        }
+        },
         alias: "opt2"
-      }
-      where: null
+      },
+      where: null,
       orderBy: [{ expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }}]
-    }
+    };
 
-    # console.log JSON.stringify(output, null, 2)
-    compare @opt.rewriteScalar(input), output
+    // console.log JSON.stringify(output, null, 2)
+    return compare(this.opt.rewriteScalar(input), output);
+  });
 
-  it 'optimizes simple limit select', ->
-    ###
+  it('optimizes simple limit select', function() {
+    /*
     select a.a1 as s1, (select sum(b.b1) from b as b where b.b2 = a.a2 order by b.b3 limit 1) as s2
     from a as a
     order by a.a3
@@ -230,99 +240,100 @@ describe "QueryOptimizer", ->
     ) as opt3
     order by opt3.opt_a_a3
 
-    ###
-    input = {
-      type: "query"
+    */
+    const input = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" },
         { 
-          type: "select"
+          type: "select",
           expr: { 
-            type: "scalar"
-            expr: { type: "field", tableAlias: "b", column: "b1" }
-            from: { type: "table", table: "b", alias: "b" }
-            where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-            orderBy: [{ expr: { type: "field", tableAlias: "b", column: "b3" }, direction: "asc" }]
+            type: "scalar",
+            expr: { type: "field", tableAlias: "b", column: "b1" },
+            from: { type: "table", table: "b", alias: "b" },
+            where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] },
+            orderBy: [{ expr: { type: "field", tableAlias: "b", column: "b3" }, direction: "asc" }],
             limit: 1
-          }
+          },
           alias: "s2" 
         }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
-    }
+    };
 
-    inner0Query = {
-      type: "query"
+    const inner0Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" },
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       where: null
-    }
+    };
     
-    inner1Query = {
-      type: "query"
+    const inner1Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
-        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" },
+        { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" },
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: { 
-          partitionBy: [{ type: "field", tableAlias: "opt1", column: "rn" }]
+          partitionBy: [{ type: "field", tableAlias: "opt1", column: "rn" }],
           orderBy: [{ expr: { type: "field", tableAlias: "opt0", column: "b3" }, direction: "asc" }]
         }, alias: "rn" }
-      ]
+      ],
       from: { 
-        type: "join"
-        kind: "left"
-        left: { type: "subquery", query: inner0Query, alias: "opt1" }
-        right: { type: "table", table: "b", alias: "opt0" }
+        type: "join",
+        kind: "left",
+        left: { type: "subquery", query: inner0Query, alias: "opt1" },
+        right: { type: "table", table: "b", alias: "opt0" },
         on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a2" }] }
       }
-    }
+    };
 
-    inner2Query = {
-      type: "query"
+    const inner2Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }, alias: "opt_a_a3" },
         { type: "select", expr: { type: "field", tableAlias: "opt2", column: "expr" }, alias: "expr" }
-      ]
-      from: { type: "subquery", query: inner1Query, alias: "opt2" }
+      ],
+      from: { type: "subquery", query: inner1Query, alias: "opt2" },
       where: {
-        type: "op"
-        op: "="
+        type: "op",
+        op: "=",
         exprs: [
-          { type: "field", tableAlias: "opt2", column: "rn" }
+          { type: "field", tableAlias: "opt2", column: "rn" },
           { type: "literal", value: 1 }
         ]
       }
-    }
+    };
 
-    output = {
-      type: "query"
+    const output = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt3", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt3", column: "opt_a_a1" }, alias: "s1" },
         { type: "select", expr: { type: "field", tableAlias: "opt3", column: "expr" }, alias: "s2" }
-      ]
+      ],
       from: {
-        type: "subquery"
-        query: inner2Query
+        type: "subquery",
+        query: inner2Query,
         alias: "opt3"
-      }
-      where: null
+      },
+      where: null,
       orderBy: [{ expr: { type: "field", tableAlias: "opt3", column: "opt_a_a3" }}]
-    }
+    };
 
-    compare @opt.rewriteScalar(input), output
+    return compare(this.opt.rewriteScalar(input), output);
+  });
 
-  it 'optimizes aggr select with where', ->
-    ###
+  it('optimizes aggr select with where', function() {
+    /*
     select a.a1 as s1, (select sum(b.b1) from b as b where b.b2 = a.a2) as s2
     from a as a
     where (select sum(c.c1) from c as c where c.c2 = a.a4) = 2 and a.a5 = 3
@@ -349,121 +360,122 @@ describe "QueryOptimizer", ->
     where opt2.expr = 2
     order by opt2.opt_a_a3
 
-    ###
-    input = {
-      type: "query"
+    */
+    const input = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" },
         { 
-          type: "select"
+          type: "select",
           expr: { 
-            type: "scalar"
-            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }
-            from: { type: "table", table: "b", alias: "b" }
+            type: "scalar",
+            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] },
+            from: { type: "table", table: "b", alias: "b" },
             where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-          }
+          },
           alias: "s2" 
         }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       where: {
-        type: "op"
-        op: "and"
+        type: "op",
+        op: "and",
         exprs: [
           { type: "op", op: "=", exprs: [
             { 
-              type: "scalar"
-              expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "c", column: "c1" }] }
-              from: { type: "table", table: "c", alias: "c" }
+              type: "scalar",
+              expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "c", column: "c1" }] },
+              from: { type: "table", table: "c", alias: "c" },
               where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "c", column: "c2" }, { type: "field", tableAlias: "a", column: "a4" }] }
-            }
+            },
             { type: "literal", value: 2 }
-          ]}
+          ]},
           { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "a", column: "a5" }, { type: "literal", value: 3 }] }
         ]
-      }
+      },
       orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
-    }
+    };
 
-    inner0Query = {
-      type: "query"
+    const inner0Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a4" }, alias: "opt_a_a4" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a5" }, alias: "opt_a_a5" }
-        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a4" }, alias: "opt_a_a4" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a5" }, alias: "opt_a_a5" },
+        { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" },
         { type: "select", expr: { type: "op", op: "row_number", exprs: [] }, over: {}, alias: "rn" }
-      ]
-      from: { type: "table", table: "a", alias: "a" }
+      ],
+      from: { type: "table", table: "a", alias: "a" },
       where: {
-        type: "op"
-        op: "and"
+        type: "op",
+        op: "and",
         exprs: [
           { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "a", column: "a5" }, { type: "literal", value: 3 }] }
         ]
       }
-    }
+    };
 
-    inner1Query = {
-      type: "query"
+    const inner1Query = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a4" }, alias: "opt_a_a4" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a5" }, alias: "opt_a_a5" }
-        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" }
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "rn" }, alias: "rn" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "opt_a_a1" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a2" }, alias: "opt_a_a2" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a4" }, alias: "opt_a_a4" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a5" }, alias: "opt_a_a5" },
+        { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }, alias: "opt_a_a3" },
         { type: "select", expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "opt0", column: "c1" }] }, alias: "expr" }
-      ]
+      ],
       from: { 
-        type: "join"
-        kind: "left"
-        left: { type: "subquery", query: inner0Query, alias: "opt1" }
-        right: { type: "table", table: "c", alias: "opt0" }
+        type: "join",
+        kind: "left",
+        left: { type: "subquery", query: inner0Query, alias: "opt1" },
+        right: { type: "table", table: "c", alias: "opt0" },
         on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "c2" }, { type: "field", tableAlias: "opt1", column: "opt_a_a4" }] }
-      }
+      },
       groupBy: [1, 2, 3, 4, 5, 6]
-    }
+    };
 
-    output = {
-      type: "query"
+    const output = {
+      type: "query",
       selects: [
-        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" }
+        { type: "select", expr: { type: "field", tableAlias: "opt2", column: "opt_a_a1" }, alias: "s1" },
         { 
-          type: "select"
+          type: "select",
           expr: { 
-            type: "scalar"
-            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] }
-            from: { type: "table", table: "b", alias: "b" }
+            type: "scalar",
+            expr: { type: "op", op: "sum", exprs: [{ type: "field", tableAlias: "b", column: "b1" }] },
+            from: { type: "table", table: "b", alias: "b" },
             where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "opt2", column: "opt_a_a2" }] }
-          }
+          },
           alias: "s2" 
         }
-      ]
+      ],
       from: {
-        type: "subquery"
-        query: inner1Query
+        type: "subquery",
+        query: inner1Query,
         alias: "opt2"
-      }
+      },
       where: {
-        type: "op"
-        op: "and"
+        type: "op",
+        op: "and",
         exprs: [
           { type: "op", op: "=", exprs: [
-            { type: "field", tableAlias: "opt2", column: "expr" }
+            { type: "field", tableAlias: "opt2", column: "expr" },
             { type: "literal", value: 2 }        
           ]}
         ]
-      }
+      },
       orderBy: [{ expr: { type: "field", tableAlias: "opt2", column: "opt_a_a3" }}]
-    }
+    };
 
-    # console.log JSON.stringify(output, null, 2)
-    compare @opt.rewriteScalar(input), output
+    // console.log JSON.stringify(output, null, 2)
+    return compare(this.opt.rewriteScalar(input), output);
+  });
 
-  it 'optimizes inner query simple non-aggr select', ->
-    ###
+  return it('optimizes inner query simple non-aggr select', function() {
+    /*
     select x.s1 as x1 from (
       select a.a1 as s1, (select b.b1 from b as b where b.b2 = a.a2) as s2
       from a as a
@@ -483,71 +495,73 @@ describe "QueryOptimizer", ->
       order by opt1.opt_a_a3
     ) as x
 
-    ###
-    input = {
-      type: "query"
-      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }]
+    */
+    const input = {
+      type: "query",
+      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }],
       from: {
-        type: "subquery"
+        type: "subquery",
         query: {
-          type: "query"
+          type: "query",
           selects: [
-            { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" }
+            { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "s1" },
             { 
-              type: "select"
+              type: "select",
               expr: { 
-                type: "scalar"
-                expr: { type: "field", tableAlias: "b", column: "b1" }
-                from: { type: "table", table: "b", alias: "b" }
+                type: "scalar",
+                expr: { type: "field", tableAlias: "b", column: "b1" },
+                from: { type: "table", table: "b", alias: "b" },
                 where: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "b", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-              }
+              },
               alias: "s2" 
             }
-          ]
-          from: { type: "table", table: "a", alias: "a" }
+          ],
+          from: { type: "table", table: "a", alias: "a" },
           orderBy: [{ expr: { type: "field", tableAlias: "a", column: "a3" }}]
-        }
+        },
         alias: "x"
       }
-    }
+    };
 
-    output = {
-      type: "query"
-      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }]
+    const output = {
+      type: "query",
+      selects: [{ type: "select", expr: { type: "field", tableAlias: "x", column: "s1"}, alias: "x1" }],
       from: {
-        type: "subquery"
+        type: "subquery",
         query: {
-          type: "query"
+          type: "query",
           selects: [
-            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" }
+            { type: "select", expr: { type: "field", tableAlias: "opt1", column: "opt_a_a1" }, alias: "s1" },
             { type: "select", expr: { type: "field", tableAlias: "opt1", column: "expr" }, alias: "s2" }
-          ]
+          ],
           from: {
-            type: "subquery"
+            type: "subquery",
             query: {
-              type: "query"
+              type: "query",
               selects: [
-                { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" }
-                { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" }
-                { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" }
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a1" }, alias: "opt_a_a1" },
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a2" }, alias: "opt_a_a2" },
+                { type: "select", expr: { type: "field", tableAlias: "a", column: "a3" }, alias: "opt_a_a3" },
                 { type: "select", expr: { type: "field", tableAlias: "opt0", column: "b1" }, alias: "expr" }
-              ]
+              ],
               from: { 
-                type: "join"
-                kind: "left"
-                left: { type: "table", table: "a", alias: "a" }
-                right: { type: "table", table: "b", alias: "opt0" }
+                type: "join",
+                kind: "left",
+                left: { type: "table", table: "a", alias: "a" },
+                right: { type: "table", table: "b", alias: "opt0" },
                 on: { type: "op", op: "=", exprs: [{ type: "field", tableAlias: "opt0", column: "b2" }, { type: "field", tableAlias: "a", column: "a2" }] }
-              }
+              },
               where: null
-            }
+            },
             alias: "opt1"
-          }
-          where: null
+          },
+          where: null,
           orderBy: [{ expr: { type: "field", tableAlias: "opt1", column: "opt_a_a3" }}]
-        }
+        },
         alias: "x"
       }
-    }
+    };
 
-    compare @opt.rewriteScalar(input), output
+    return compare(this.opt.rewriteScalar(input), output);
+  });
+});

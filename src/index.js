@@ -1,4 +1,4 @@
-exports.SqlFragment = require './SqlFragment'
-exports.JsonqlCompiler = require './JsonqlCompiler'
-exports.SchemaMap = require './SchemaMap'
-exports.QueryOptimizer = require './QueryOptimizer'
+export let SqlFragment = require('./SqlFragment');
+export let JsonqlCompiler = require('./JsonqlCompiler');
+export let SchemaMap = require('./SchemaMap');
+export let QueryOptimizer = require('./QueryOptimizer');
