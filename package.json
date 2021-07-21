@@ -29,6 +29,7 @@
     "minimist": "^1.1.3"
   },
   "devDependencies": {
+    "@types/chai": "^4.2.21",
     "@types/lodash": "^3.10.4",
     "build-library": "github:mWater/build-library",
     "canonical-json": "0.0.4",

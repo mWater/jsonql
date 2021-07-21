@@ -1,5 +1,3 @@
-// TODO: This file was created by bulk-decaffeinate.
-// Sanity-check the conversion and remove this comment.
 import { assert } from "chai"
 import SqlFragment from "../src/SqlFragment"
 
@@ -36,6 +34,11 @@ describe("SqlFragment", function () {
   it("escapes ' to inline", function () {
     const sql = new SqlFragment("x=?", ["a'bc"]).toInline()
     return assert.equal(sql, "x='a''bc'")
+  })
+
+  it("ignores ? in string", function () {
+    const sql = new SqlFragment("x='?' + ?", ["a"]).toInline()
+    return assert.equal(sql, "x='?' + 'a'")
   })
 
   it("converts null to inline", function () {

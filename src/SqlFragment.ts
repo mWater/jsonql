@@ -78,7 +78,8 @@ export default class SqlFragment {
     let n = 0
     // All the question marks not followed by | or &
     // ?| and ?& are jsonb operators (so is ?, but it can be replaced by one of the others)
-    const sql = this.sql.replace(/\?(?!\||&)/g, (str: any) => {
+    // This complex expression is to not match 'xyz?'. See https://stackoverflow.com/questions/6462578/regex-to-match-all-instances-not-inside-quotes
+    const sql = this.sql.replace(/\?(?!\||&)(?=([^']*'[^']*')*[^']*$)/g, (str: any) => {
       // Insert nth parameter
       // Check type
       const param = this.params[n]
