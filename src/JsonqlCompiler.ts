@@ -24,17 +24,18 @@ export default class JsonqlCompiler {
    * expression, so it already has a row selected.
    * ctes are aliases for common table expressions. They are a map of alias to true
    */
-  compileQuery(
+  async compileQuery(
     query: JsonQLQuery,
     aliases: { [alias: string]: string | true } = {},
     ctes: { [alias: string]: boolean } = {}
-  ): SqlFragment {
+  ): Promise<SqlFragment> {
     // If union, handle that
     let from
     if (query.type === "union") {
+      const subqueries = await Promise.all(query.queries.map(q => this.compileQuery(q, aliases, ctes)))
       return SqlFragment.join(
-        _.map(query.queries, (q: any) => {
-          return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
+        _.map(subqueries, (q: any) => {
+          return new SqlFragment("(").append(q).append(")")
         }),
         " union "
       )
@@ -42,9 +43,10 @@ export default class JsonqlCompiler {
 
     // If union all, handle that
     if (query.type === "union all") {
+      const subqueries = await Promise.all(query.queries.map(q => this.compileQuery(q, aliases, ctes)))
       return SqlFragment.join(
-        _.map(query.queries, (q: any) => {
-          return new SqlFragment("(").append(this.compileQuery(q, aliases, ctes)).append(")")
+        _.map(subqueries, (q: any) => {
+          return new SqlFragment("(").append(q).append(")")
         }),
         " union all "
       )
@@ -67,7 +69,7 @@ export default class JsonqlCompiler {
       for (let w of query.withs) {
         const f = new SqlFragment('"').append(this.schemaMap.mapTableAlias(w.alias))
         f.append('" as (')
-        f.append(this.compileQuery(w.query, aliases))
+        f.append(await this.compileQuery(w.query, aliases))
         f.append(")")
         withClauses.push(f)
 
@@ -92,13 +94,13 @@ export default class JsonqlCompiler {
 
     // Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
     if (query.from) {
-      from = this.compileFrom(query.from, aliases, ctes)
+      from = await this.compileFrom(query.from, aliases, ctes)
     } else {
       from = null
     }
 
     // Compile selects
-    const selects = _.map(query.selects, (s: any) => this.compileSelect(s, aliases, ctes))
+    const selects = await Promise.all(_.map(query.selects, (s: any) => this.compileSelect(s, aliases, ctes)))
 
     // Handle null select
     if (selects.length === 0) {
@@ -115,7 +117,7 @@ export default class JsonqlCompiler {
 
     // Add where
     if (query.where != null) {
-      const where = this.compileExpr(query.where, aliases, ctes)
+      const where = await this.compileExpr(query.where, aliases, ctes)
       if (!where.isEmpty()) {
         frag.append(" where ")
         frag.append(where)
@@ -133,22 +135,21 @@ export default class JsonqlCompiler {
         throw new Error("Invalid groupBy")
       }
 
+      const groupByExprs = await Promise.all(_.map(query.groupBy, (groupBy: any) => {
+        if (isInt(groupBy)) {
+          return new SqlFragment(`${groupBy}`)
+        }
+        return this.compileExpr(groupBy, aliases, ctes)
+      }))
+
       frag.append(
-        SqlFragment.join(
-          _.map(query.groupBy, (groupBy: any) => {
-            if (isInt(groupBy)) {
-              return new SqlFragment(`${groupBy}`)
-            }
-            return this.compileExpr(groupBy, aliases, ctes)
-          }),
-          ", "
-        )
+        SqlFragment.join(groupByExprs, ", ")
       )
     }
 
     // Add order by
     if (query.orderBy) {
-      frag.append(this.compileOrderBy(query.orderBy, aliases))
+      frag.append(await this.compileOrderBy(query.orderBy, aliases))
     }
 
     // Add limit
@@ -174,14 +175,14 @@ export default class JsonqlCompiler {
 
   // select is { expr: <expr>, alias: <string> }
   // aliases are dict of unmapped alias to table name, or true for whitelisted tables (CTEs or subqueries)
-  compileSelect(select: any, aliases: any, ctes = {}) {
+  async compileSelect(select: any, aliases: any, ctes = {}) {
     // Add legacy over to expr
     let { expr } = select
     if (select.over) {
       expr = _.extend({}, expr, { over: select.over })
     }
 
-    const frag = this.compileExpr(expr, aliases, ctes)
+    const frag = await this.compileExpr(expr, aliases, ctes)
 
     frag.append(" as ")
 
@@ -193,7 +194,7 @@ export default class JsonqlCompiler {
 
   // Compiles table or join returning sql and modifying aliases
   // ctes are aliases for common table expressions. They are a map of alias to true
-  compileFrom(from: any, aliases = {}, ctes = {}): SqlFragment {
+  async compileFrom(from: any, aliases = {}, ctes = {}): Promise<SqlFragment> {
     // TODO check that alias is not repeated in from
     switch (from.type) {
       case "table":
@@ -213,14 +214,14 @@ export default class JsonqlCompiler {
 
         // Save alias
         aliases[from.alias] = from.table
-        return this.schemaMap
-          .mapTable(from.table)
+        const mappedTable = await this.schemaMap.mapTable(from.table)
+        return mappedTable
           .append(new SqlFragment(' as "' + this.schemaMap.mapTableAlias(from.alias) + '"'))
 
       case "join":
         // Compile left and right
-        var left = this.compileFrom(from.left, aliases, ctes)
-        var right = this.compileFrom(from.right, aliases, ctes)
+        var left = await this.compileFrom(from.left, aliases, ctes)
+        var right = await this.compileFrom(from.right, aliases, ctes)
 
         // TODO this has never worked
         // // Make sure aliases don't overlap
@@ -237,7 +238,7 @@ export default class JsonqlCompiler {
         }
 
         // Compile on
-        var onSql = from.on ? this.compileExpr(from.on, aliases, ctes) : undefined
+        var onSql = from.on ? await this.compileExpr(from.on, aliases, ctes) : undefined
 
         if (!["inner", "left", "right", "full", "cross"].includes(from.kind)) {
           throw new Error(`Unsupported join kind ${from.kind}`)
@@ -266,7 +267,7 @@ export default class JsonqlCompiler {
         }
 
         // Compile query
-        var subquery = this.compileQuery(from.query, aliases, ctes)
+        var subquery = await this.compileQuery(from.query, aliases, ctes)
 
         // Get list of fields of subquery
         var fields = _.map(from.query.selects, (s: any) => s.alias)
@@ -290,7 +291,7 @@ export default class JsonqlCompiler {
         }
 
         // Compile expression
-        var subexpr = this.compileExpr(from.expr, aliases, ctes)
+        var subexpr = await this.compileExpr(from.expr, aliases, ctes)
 
         // Record alias as true to allow any field to be queried
         aliases[from.alias] = true
@@ -302,7 +303,7 @@ export default class JsonqlCompiler {
     }
   }
 
-  compileOrderBy(orderBy: any, aliases: any) {
+  async compileOrderBy(orderBy: any, aliases: any) {
     const frag = new SqlFragment()
 
     if (!_.isArray(orderBy)) {
@@ -322,25 +323,23 @@ export default class JsonqlCompiler {
     }
 
     if (orderBy.length > 0) {
+      const orderByExprs = await Promise.all(_.map(orderBy, async (o: any) => {
+        let f
+        if (_.isNumber(o.ordinal)) {
+          f = new SqlFragment(`${o.ordinal}`)
+        } else {
+          f = await this.compileExpr(o.expr, aliases)
+        }
+        if (o.direction) {
+          f.append(" " + o.direction)
+        }
+        if (o.nulls && ["first", "last"].includes(o.nulls)) {
+          f.append(` nulls ${o.nulls}`)
+        }
+        return f
+      }))
       frag.append(" order by ").append(
-        SqlFragment.join(
-          _.map(orderBy, (o: any) => {
-            let f
-            if (_.isNumber(o.ordinal)) {
-              f = new SqlFragment(`${o.ordinal}`)
-            } else {
-              f = this.compileExpr(o.expr, aliases)
-            }
-            if (o.direction) {
-              f.append(" " + o.direction)
-            }
-            if (o.nulls && ["first", "last"].includes(o.nulls)) {
-              f.append(` nulls ${o.nulls}`)
-            }
-            return f
-          }),
-          ", "
-        )
+        SqlFragment.join(orderByExprs, ", ")
       )
     }
     return frag
@@ -349,7 +348,7 @@ export default class JsonqlCompiler {
   /** Compiles an expression
    aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
    */
-  compileExpr(expr: JsonQLExpr, aliases: { [alias: string]: string | true }, ctes: { [alias: string]: boolean } = {}): SqlFragment {
+  async compileExpr(expr: JsonQLExpr, aliases: { [alias: string]: string | true }, ctes: { [alias: string]: boolean } = {}): Promise<SqlFragment> {
     if (aliases == null) {
       throw new Error("Missing aliases")
     }
@@ -391,7 +390,7 @@ export default class JsonqlCompiler {
           }
         }
 
-        return this.schemaMap.mapColumn(
+        return await this.schemaMap.mapColumn(
           (aliases[expr.tableAlias] as string),
           expr.column!,
           this.schemaMap.mapTableAlias(expr.tableAlias)
@@ -411,7 +410,7 @@ export default class JsonqlCompiler {
   }
 
   // Compiles an op expression
-  compileOpExpr(expr: any, aliases: any, ctes = {}) {
+  async compileOpExpr(expr: any, aliases: any, ctes = {}) {
     let inner
     const functions = [
       "avg",
@@ -497,13 +496,13 @@ export default class JsonqlCompiler {
       case "?|":
       case "?&":
         var frag = new SqlFragment("(")
-          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(new SqlFragment(" " + expr.op + " "))
 
         if (["any", "all"].includes(expr.modifier)) {
-          frag.append(expr.modifier).append("(").append(this.compileExpr(expr.exprs[1], aliases, ctes)).append("))")
+          frag.append(expr.modifier).append("(").append(await this.compileExpr(expr.exprs[1], aliases, ctes)).append("))")
         } else {
-          frag.append(this.compileExpr(expr.exprs[1], aliases, ctes)).append(")")
+          frag.append(await this.compileExpr(expr.exprs[1], aliases, ctes)).append(")")
         }
         return frag
       case "and":
@@ -512,7 +511,7 @@ export default class JsonqlCompiler {
       case "-":
       case "*":
       case "||":
-        var compiledExprs = _.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes))
+        var compiledExprs = await Promise.all(_.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes)))
 
         // Remove blanks
         compiledExprs = _.filter(compiledExprs, (e: any) => !e.isEmpty())
@@ -528,18 +527,18 @@ export default class JsonqlCompiler {
       case "is null":
       case "is not null":
         return new SqlFragment("(")
-          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(new SqlFragment(" " + expr.op))
           .append(")")
       case "not":
-        return new SqlFragment("(not ").append(this.compileExpr(expr.exprs[0], aliases, ctes)).append(")")
+        return new SqlFragment("(not ").append(await this.compileExpr(expr.exprs[0], aliases, ctes)).append(")")
       case "between":
         return new SqlFragment("(")
-          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(" between ")
-          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[1], aliases, ctes))
           .append(" and ")
-          .append(this.compileExpr(expr.exprs[2], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[2], aliases, ctes))
           .append(")")
       case "::text":
       case "::geometry":
@@ -558,22 +557,22 @@ export default class JsonqlCompiler {
       case "::spheroid":
       case "::numeric":
       case "::integer[]":
-        return new SqlFragment("(").append(this.compileExpr(expr.exprs[0], aliases, ctes)).append(expr.op).append(")")
+        return new SqlFragment("(").append(await this.compileExpr(expr.exprs[0], aliases, ctes)).append(expr.op).append(")")
       case "exists":
-        return new SqlFragment("exists (").append(this.compileQuery(expr.exprs[0], aliases, ctes)).append(")")
+        return new SqlFragment("exists (").append(await this.compileQuery(expr.exprs[0], aliases, ctes)).append(")")
       case "[]":
         return new SqlFragment("((")
-          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(")[")
-          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[1], aliases, ctes))
           .append("])")
       case "interval":
-        return new SqlFragment("(interval ").append(this.compileExpr(expr.exprs[0], aliases, ctes)).append(")")
+        return new SqlFragment("(interval ").append(await this.compileExpr(expr.exprs[0], aliases, ctes)).append(")")
       case "at time zone":
         return new SqlFragment("(")
-          .append(this.compileExpr(expr.exprs[0], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[0], aliases, ctes))
           .append(" at time zone ")
-          .append(this.compileExpr(expr.exprs[1], aliases, ctes))
+          .append(await this.compileExpr(expr.exprs[1], aliases, ctes))
           .append(")")
       default:
         // Whitelist known functions and all PostGIS and CartoDb and mwater
@@ -584,7 +583,7 @@ export default class JsonqlCompiler {
           expr.op.match(/^mwater_[a-zA-z_]+$/)
         ) {
           inner = SqlFragment.join(
-            _.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes)),
+            await Promise.all(_.map(expr.exprs, (e: any) => this.compileExpr(e, aliases, ctes))),
             ", "
           )
 
@@ -595,7 +594,7 @@ export default class JsonqlCompiler {
 
           // Handle orderBy
           if (expr.orderBy) {
-            inner = inner.append(this.compileOrderBy(expr.orderBy, aliases))
+            inner = inner.append(await this.compileOrderBy(expr.orderBy, aliases))
           }
 
           if (expr.modifier === "distinct") {
@@ -611,13 +610,13 @@ export default class JsonqlCompiler {
               frag.append("partition by ")
               frag.append(
                 SqlFragment.join(
-                  _.map(expr.over.partitionBy, (pb: any) => this.compileExpr(pb, aliases, ctes)),
+                  await Promise.all(_.map(expr.over.partitionBy, (pb: any) => this.compileExpr(pb, aliases, ctes))),
                   ", "
                 )
               )
             }
             if (expr.over.orderBy) {
-              frag.append(this.compileOrderBy(expr.over.orderBy, aliases))
+              frag.append(await this.compileOrderBy(expr.over.orderBy, aliases))
             }
             frag.append("))")
           }
@@ -630,7 +629,7 @@ export default class JsonqlCompiler {
   }
 
   // Compile a scalar subquery made up of expr, from, where, order, limit, skip
-  compileScalar(query: any, aliases: any, ctes = {}) {
+  async compileScalar(query: any, aliases: any, ctes = {}) {
     let from
     const frag = new SqlFragment("(")
 
@@ -644,7 +643,7 @@ export default class JsonqlCompiler {
       for (let w of query.withs) {
         const f = new SqlFragment('"').append(this.schemaMap.mapTableAlias(w.alias))
         f.append('" as (')
-        f.append(this.compileQuery(w.query, aliases))
+        f.append(await this.compileQuery(w.query, aliases))
         f.append(")")
         withClauses.push(f)
 
@@ -665,13 +664,13 @@ export default class JsonqlCompiler {
 
     // Compile from clause, getting sql and aliases. Aliases are dict of unmapped alias to table name
     if (query.from) {
-      from = this.compileFrom(query.from, aliases, ctes)
+      from = await this.compileFrom(query.from, aliases, ctes)
     } else {
       from = null
     }
 
     // Compile single select expression
-    frag.append(this.compileExpr(query.expr, aliases, ctes))
+    frag.append(await this.compileExpr(query.expr, aliases, ctes))
 
     // Add from
     if (from) {
@@ -681,7 +680,7 @@ export default class JsonqlCompiler {
 
     // Add where
     if (query.where != null) {
-      const where = this.compileExpr(query.where, aliases, ctes)
+      const where = await this.compileExpr(query.where, aliases, ctes)
       if (!where.isEmpty()) {
         frag.append(" where ")
         frag.append(where)
@@ -690,7 +689,7 @@ export default class JsonqlCompiler {
 
     // Add order by
     if (query.orderBy) {
-      frag.append(this.compileOrderBy(query.orderBy, aliases))
+      frag.append(await this.compileOrderBy(query.orderBy, aliases))
     }
 
     // Add limit
@@ -715,25 +714,25 @@ export default class JsonqlCompiler {
     return frag
   }
 
-  compileCaseExpr(expr: any, aliases: any, ctes = {}) {
+  async compileCaseExpr(expr: any, aliases: any, ctes = {}) {
     const frag = new SqlFragment("case ")
 
     if (expr.input != null) {
-      frag.append(this.compileExpr(expr.input, aliases, ctes))
+      frag.append(await this.compileExpr(expr.input, aliases, ctes))
       frag.append(" ")
     }
 
     for (let c of expr.cases) {
       frag.append("when ")
-      frag.append(this.compileExpr(c.when, aliases, ctes))
+      frag.append(await this.compileExpr(c.when, aliases, ctes))
       frag.append(" then ")
-      frag.append(this.compileExpr(c.then, aliases, ctes))
+      frag.append(await this.compileExpr(c.then, aliases, ctes))
       frag.append(" ")
     }
 
     if (expr.else != null) {
       frag.append("else ")
-      frag.append(this.compileExpr(expr.else, aliases, ctes))
+      frag.append(await this.compileExpr(expr.else, aliases, ctes))
       frag.append(" ")
     }
 
