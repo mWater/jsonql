@@ -4,11 +4,11 @@ import SchemaMap from "./SchemaMap";
 /** Compiles jsonql to sql */
 export default class JsonqlCompiler {
     optimizeQueries: boolean;
-    schemaMap: any;
+    schemaMap: SchemaMap;
     nextId: number;
     constructor(schemaMap: SchemaMap, optimizeQueries?: boolean);
     compileQuery(query: JsonQLQuery, aliases?: {
-        [alias: string]: string | boolean;
+        [alias: string]: string | true;
     }, ctes?: {
         [alias: string]: boolean;
     }): SqlFragment;
@@ -19,7 +19,7 @@ export default class JsonqlCompiler {
      aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
      */
     compileExpr(expr: JsonQLExpr, aliases: {
-        [alias: string]: string | boolean;
+        [alias: string]: string | true;
     }, ctes?: {
         [alias: string]: boolean;
     }): SqlFragment;

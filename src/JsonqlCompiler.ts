@@ -8,7 +8,7 @@ import SchemaMap from "./SchemaMap"
 /** Compiles jsonql to sql */
 export default class JsonqlCompiler {
   optimizeQueries: boolean
-  schemaMap: any
+  schemaMap: SchemaMap
   nextId: number
   
   constructor(schemaMap: SchemaMap, optimizeQueries?: boolean) {
@@ -26,7 +26,7 @@ export default class JsonqlCompiler {
    */
   compileQuery(
     query: JsonQLQuery,
-    aliases: { [alias: string]: string | boolean } = {},
+    aliases: { [alias: string]: string | true } = {},
     ctes: { [alias: string]: boolean } = {}
   ): SqlFragment {
     // If union, handle that
@@ -349,7 +349,7 @@ export default class JsonqlCompiler {
   /** Compiles an expression
    aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
    */
-  compileExpr(expr: JsonQLExpr, aliases: { [alias: string]: string | boolean }, ctes: { [alias: string]: boolean } = {}): SqlFragment {
+  compileExpr(expr: JsonQLExpr, aliases: { [alias: string]: string | true }, ctes: { [alias: string]: boolean } = {}): SqlFragment {
     if (aliases == null) {
       throw new Error("Missing aliases")
     }
@@ -392,8 +392,8 @@ export default class JsonqlCompiler {
         }
 
         return this.schemaMap.mapColumn(
-          aliases[expr.tableAlias],
-          expr.column,
+          (aliases[expr.tableAlias] as string),
+          expr.column!,
           this.schemaMap.mapTableAlias(expr.tableAlias)
         )
       case "scalar":
