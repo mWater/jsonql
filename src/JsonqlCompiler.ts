@@ -471,7 +471,8 @@ export default class JsonqlCompiler {
       "least",
       "greatest",
       "bool_or",
-      "bool_and"
+      "bool_and",
+      "concat"
     ]
 
     switch (expr.op) {
