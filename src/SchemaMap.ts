@@ -3,12 +3,12 @@ import SqlFragment from "./SqlFragment"
 /** Maps tables and columns to a secure sql fragment. Base class is simple passthrough */
 export default class SchemaMap {
   /** Maps a table to a secured, sanitized version */
-  mapTable(table: string): SqlFragment {
+  async mapTable(table: string): Promise<SqlFragment> {
     return new SqlFragment(table)
   }
 
   /** Map a column reference of a table aliased as escaped alias alias */
-  mapColumn(table: string, column: string, alias: string): SqlFragment {
+  async mapColumn(table: string, column: string, alias: string): Promise<SqlFragment> {
     return new SqlFragment(alias + "." + column)
   }
 

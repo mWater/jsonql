@@ -11,10 +11,10 @@ export default class JsonqlCompiler {
         [alias: string]: string | true;
     }, ctes?: {
         [alias: string]: boolean;
-    }): SqlFragment;
-    compileSelect(select: any, aliases: any, ctes?: {}): SqlFragment;
-    compileFrom(from: any, aliases?: {}, ctes?: {}): SqlFragment;
-    compileOrderBy(orderBy: any, aliases: any): SqlFragment;
+    }): Promise<SqlFragment>;
+    compileSelect(select: any, aliases: any, ctes?: {}): Promise<SqlFragment>;
+    compileFrom(from: any, aliases?: {}, ctes?: {}): Promise<SqlFragment>;
+    compileOrderBy(orderBy: any, aliases: any): Promise<SqlFragment>;
     /** Compiles an expression
      aliases are dict of unmapped alias to table name, or true whitelisted tables (CTEs and subqueries and subexpressions)
      */
@@ -22,9 +22,9 @@ export default class JsonqlCompiler {
         [alias: string]: string | true;
     }, ctes?: {
         [alias: string]: boolean;
-    }): SqlFragment;
-    compileOpExpr(expr: any, aliases: any, ctes?: {}): SqlFragment;
-    compileScalar(query: any, aliases: any, ctes?: {}): SqlFragment;
-    compileCaseExpr(expr: any, aliases: any, ctes?: {}): SqlFragment;
+    }): Promise<SqlFragment>;
+    compileOpExpr(expr: any, aliases: any, ctes?: {}): Promise<SqlFragment>;
+    compileScalar(query: any, aliases: any, ctes?: {}): Promise<SqlFragment>;
+    compileCaseExpr(expr: any, aliases: any, ctes?: {}): Promise<SqlFragment>;
     validateAlias(alias: any): void;
 }
