@@ -580,7 +580,7 @@ export default class JsonqlCompiler {
         // Whitelist known functions and all PostGIS and CartoDb and mwater
         if (
           functions.includes(expr.op) ||
-          expr.op.match(/^ST_[a-zA-z]+$/) ||
+          expr.op.match(/^ST_[a-zA-z0-9]+$/) ||
           expr.op.match(/^CDB_[a-zA-z]+$/) ||
           expr.op.match(/^mwater_[a-zA-z_]+$/)
         ) {
