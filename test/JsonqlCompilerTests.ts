@@ -371,7 +371,7 @@ describe("JsonqlCompiler", async function () {
   })
 
   it("validates aliases", function () {
-    assert.throws(() => compiler.validateAlias("1234"))
+    assert.throws(() => compiler.validateAlias(" 1234"))
     assert.throws(() => compiler.validateAlias("ab;c"))
     return compiler.validateAlias("abc")
   })

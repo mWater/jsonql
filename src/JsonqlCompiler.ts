@@ -742,7 +742,7 @@ export default class JsonqlCompiler {
 
   // Validate alias string. Throws if bad
   validateAlias(alias: any) {
-    if (!alias.match(/^[_a-zA-Z][a-zA-Z_0-9. :]*$/)) {
+    if (!alias.match(/^[_a-zA-Z0-9][a-zA-Z_0-9. :]*$/)) {
       throw new Error(`Invalid alias '${alias}'`)
     }
   }
