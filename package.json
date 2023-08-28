@@ -9,10 +9,10 @@
   },
   "repository": "git@github.com:mWater/jsonql.git",
   "scripts": {
-    "test": "node_modules/build-library/test-cli",
-    "test-browser": "node_modules/build-library/test-browser",
-    "watch": "node_modules/build-library/watch",
-    "build": "node_modules/build-library/build",
+    "test": "../../node_modules/build-library/test-cli",
+    "test-browser": "../../node_modules/build-library/test-browser",
+    "watch": "../../node_modules/build-library/watch",
+    "build": "../../node_modules/build-library/build",
     "storybook": "gulp prepare_storybook && start-storybook -s . -p 6009",
     "build-storybook": "build-storybook"
   },
